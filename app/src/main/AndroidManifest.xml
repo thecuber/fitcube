@@ -22,7 +22,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".SetActivity"
+            android:name=".WorkoutDayInfoActivity"
             android:exported="false"/>
     </application>
 

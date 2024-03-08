@@ -27,6 +27,6 @@ data class WorkoutExercise (
 )
 
 data class ExerciseHistory(
-    val sets: Int,
-    val prediction: List<Long>
+    @ColumnInfo(defaultValue = "0") val sets: Int,
+    @ColumnInfo(defaultValue = "[]") val prediction: List<Long>
 )

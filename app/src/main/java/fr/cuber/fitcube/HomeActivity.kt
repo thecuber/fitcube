@@ -69,6 +69,13 @@ class HomeActivity : ComponentActivity() {
     }
 
 
+    override fun onResume() {
+        super.onResume()
+        CoroutineScope(Dispatchers.IO).launch {
+            trainingSets = db.workoutDAO().getAll()
+        }
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ActivityContent() {
@@ -133,7 +140,7 @@ class HomeActivity : ComponentActivity() {
     @Composable
     fun TrainingSetCard(set: WorkoutDay?) {
         Row(modifier = Modifier.padding(8.dp).clickable(enabled = set != null, onClick = {
-            val intent = Intent(this@HomeActivity, SetActivity::class.java)
+            val intent = Intent(this@HomeActivity, WorkoutDayInfoActivity::class.java)
             intent.putExtra("uid", set?.uid)
             startActivity(intent)
         })) {
@@ -146,9 +153,9 @@ class HomeActivity : ComponentActivity() {
         var setName by remember { mutableStateOf("") }
         val send = {
             close()
-            val intent = Intent(this@HomeActivity, SetActivity::class.java)
+            val intent = Intent(this@HomeActivity, WorkoutDayInfoActivity::class.java)
             CoroutineScope(Dispatchers.IO).launch {
-                intent.putExtra("uid", db.workoutDAO().createTrainingSet(setName))
+                intent.putExtra("uid", db.workoutDAO().createWorkoutDay(setName))
                 CoroutineScope(Dispatchers.Main).launch {
                     startActivity(intent)
                 }

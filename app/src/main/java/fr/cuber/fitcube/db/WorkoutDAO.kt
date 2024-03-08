@@ -8,7 +8,7 @@ interface WorkoutDAO {
     @Query("SELECT * FROM workout_days")
     fun getAll(): List<WorkoutDay>
     @Query("INSERT INTO workout_days (name, color) VALUES (:name, \"#000000\")")
-    fun createTrainingSet(name: String): Long
+    fun createWorkoutDay(name: String): Long
 
     @Query("SELECT * FROM workout_days WHERE uid = :uid")
     fun getTrainingSet(uid: Int): WorkoutDay
