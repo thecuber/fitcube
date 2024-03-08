@@ -15,16 +15,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
-import fr.cuber.fitcube.R
-import fr.cuber.fitcube.data.AppDatabase
-import fr.cuber.fitcube.data.TrainingSet
+import fr.cuber.fitcube.db.AppDatabase
+import fr.cuber.fitcube.db.WorkoutDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class SetActivity : AppCompatActivity() {
 
-    private var trainingSet: TrainingSet? = null
+    private var trainingSet: WorkoutDay? = null
     private lateinit var db: AppDatabase
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,7 +31,7 @@ class SetActivity : AppCompatActivity() {
         val uid = intent.getIntExtra("uid", 0)
         println("UID: $uid")
         CoroutineScope(Dispatchers.IO).launch {
-            trainingSet = db.trainingDAO().getTrainingSet(uid)
+            trainingSet = db.workoutDAO().getTrainingSet(uid)
         }
         setContent {
             content()

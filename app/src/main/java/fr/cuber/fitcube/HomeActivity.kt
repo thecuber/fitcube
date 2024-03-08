@@ -39,14 +39,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import fr.cuber.fitcube.data.AppDatabase
-import fr.cuber.fitcube.data.TrainingSet
+import fr.cuber.fitcube.db.AppDatabase
+import fr.cuber.fitcube.db.WorkoutDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import java.io.File
 
 class HomeActivity : ComponentActivity() {
 
@@ -56,14 +53,14 @@ class HomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
             db = AppDatabase.getInstance(applicationContext)
             CoroutineScope(Dispatchers.IO).launch {
-                trainingSets = db.trainingDAO().getAll()
+                trainingSets = db.workoutDAO().getAll()
             }
         setContent {
             ActivityContent()
         }
     }
 
-    private var trainingSets: List<TrainingSet> = arrayListOf()
+    private var trainingSets: List<WorkoutDay> = arrayListOf()
 
     @Preview
     @Composable
@@ -134,7 +131,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     @Composable
-    fun TrainingSetCard(set: TrainingSet?) {
+    fun TrainingSetCard(set: WorkoutDay?) {
         Row(modifier = Modifier.padding(8.dp).clickable(enabled = set != null, onClick = {
             val intent = Intent(this@HomeActivity, SetActivity::class.java)
             intent.putExtra("uid", set?.uid)
@@ -151,7 +148,7 @@ class HomeActivity : ComponentActivity() {
             close()
             val intent = Intent(this@HomeActivity, SetActivity::class.java)
             CoroutineScope(Dispatchers.IO).launch {
-                intent.putExtra("uid", db.trainingDAO().createTrainingSet(setName))
+                intent.putExtra("uid", db.workoutDAO().createTrainingSet(setName))
                 CoroutineScope(Dispatchers.Main).launch {
                     startActivity(intent)
                 }
