@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">FitCube</string>
+    <string name="no_workout_session">No session done</string>
+    <string name="no_workout">No workout created yet !</string>
+    <plurals name="last_workout_session">
+        <item quantity="one">Last session :1 day ago</item>
+        <item quantity="other">Last session : %d days ago</item>
+    </plurals>
 </resources>

@@ -1,78 +1,21 @@
 package fr.cuber.fitcube.db
 
-import android.content.Context
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverter
 import androidx.room.TypeConverters
-import androidx.sqlite.db.SupportSQLiteDatabase
-import fr.cuber.fitcube.R
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import org.json.JSONArray
-import org.json.JSONObject
-import java.text.DateFormat
-import java.util.Date
+import fr.cuber.fitcube.db.dao.ExerciseDao
+import fr.cuber.fitcube.db.dao.WorkoutDao
+import fr.cuber.fitcube.db.entity.ExerciseType
+import fr.cuber.fitcube.db.entity.Workout
 
-class Converters {
-    @TypeConverter
-    fun fromLong(value : List<Long>) = Json.encodeToString(value)
-
-    @TypeConverter
-    fun toLong(value: String) = Json.decodeFromString<List<Long>>(value)
-
-    @TypeConverter
-    fun fromDate(value : Date) = value.toString()
-
-    @TypeConverter
-    fun toDate(value: String) = Date(value)
-
-    @TypeConverter
-    fun fromInt(value : List<Int>) = Json.encodeToString(value)
-
-    @TypeConverter
-    fun toInt(value: String) = Json.decodeFromString<List<Int>>(value)
-
-    @TypeConverter
-    fun fromMap(value : Map<Int, ExerciseHistory>) = Json.encodeToString(value)
-
-    @TypeConverter
-    fun toMap(value: String) = Json.decodeFromString<Map<Int, ExerciseHistory>>(value)
-}
-
-@Database(entities = [WorkoutDay::class, WorkoutHistory::class, BaseExercise::class, WorkoutExercise::class], version = 1)
+@Database(
+    entities = [ExerciseType::class, Workout::class],
+    version = 1
+)
 @TypeConverters(Converters::class)
-abstract class AppDatabase : RoomDatabase() {
-    abstract fun workoutDAO(): WorkoutDAO
-    abstract fun exerciseDAO(): ExerciseDAO
+abstract class AppDatabase: RoomDatabase() {
 
-    companion object {
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
+    abstract fun getExerciseDao(): ExerciseDao
+    abstract fun getWorkoutDao(): WorkoutDao
 
-        fun getInstance(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "fitcube-db"
-                )
-                    .addCallback(object : Callback() {
-                        override fun onCreate(db: SupportSQLiteDatabase) {
-                            super.onCreate(db)
-                            val file = context.resources.openRawResource(R.raw.exercises)
-                            val exercises = JSONArray(file.bufferedReader().use { it.readText() })
-                            for(i in (0..<exercises.length())) {
-                                val exercise = exercises.getJSONObject(i)
-                                db.execSQL("INSERT INTO exercises (uid, name, description) VALUES (${exercise.getString("id")}, '${exercise.getString("name").replace("'", " ")}', '${exercise.getString("description").replace("'", " ")}')")
-                            }
-                        }
-                    })
-                .build()
-                INSTANCE = instance
-                instance
-            }
-        }
-    }
 }
