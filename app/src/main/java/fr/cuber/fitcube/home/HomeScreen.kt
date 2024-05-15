@@ -36,7 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.R
-import fr.cuber.fitcube.db.entity.Workout
+import fr.cuber.fitcube.data.db.dao.HomeWorkout
+import fr.cuber.fitcube.data.db.dao.defaultHomeWorkout
+import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.FitCubeAppBar
 import java.util.Date
@@ -66,7 +68,7 @@ fun HomeScreen(
 fun HomeScaffold(
     openWorkout: (Workout) -> Unit,
     openDialog: () -> Unit,
-    workouts: List<Workout>,
+    workouts: List<HomeWorkout>,
     modifier: Modifier = Modifier
 ){
     Scaffold (
@@ -77,7 +79,7 @@ fun HomeScaffold(
             FloatingActionButton(onClick = {
                 openDialog()
             }) {
-                Icon(Icons.Filled.Add, "Add exercise.")
+                Icon(Icons.Filled.Add, "Add workout.")
             }
         }
     ) {
@@ -93,7 +95,7 @@ fun HomeScaffold(
 fun HomeContent(
     openWorkout: (Workout) -> Unit,
     modifier: Modifier = Modifier,
-    workouts: List<Workout>
+    workouts: List<HomeWorkout>
 ) {
     Column (
         modifier
@@ -102,7 +104,7 @@ fun HomeContent(
         workouts.forEach { workout ->
             HomeWorkoutItem(
                 workout = workout,
-                onClick = { openWorkout(workout) }
+                onClick = { openWorkout(workout.workout) }
             )
             Divider()
         }
@@ -114,7 +116,7 @@ fun HomeContent(
 
 @Composable
 fun HomeWorkoutItem(
-    workout: Workout,
+    workout: HomeWorkout,
     onClick: () -> Unit
 ) {
 
@@ -122,9 +124,9 @@ fun HomeWorkoutItem(
         .padding(8.dp)
         .fillMaxWidth()
         .clickable { onClick() }) {
-        Text(text = workout.name)
-        Text(text = if (workout.lastSession != null) {
-            val t = ((Date().time - workout.lastSession.time) / (3600 * 24)).toInt()
+        Text(text = workout.workout.name)
+        Text(text = if (workout.date != null) {
+            val t = ((Date().time - workout.date) / (3600 * 24)).toInt()
             pluralStringResource(id = R.plurals.last_workout_session, t, t)
         } else stringResource(id = R.string.no_workout_session), fontStyle = FontStyle.Italic)
     }
@@ -142,7 +144,7 @@ fun HomeDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(375.dp)
+                .height(200.dp)
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
@@ -186,45 +188,15 @@ fun HomeDialog(
 
 @Preview
 @Composable
-fun HomeWorkoutItemPreview() {
-    FitCubeTheme {
-        Surface {
-            HomeWorkoutItem(
-                workout = Workout(
-                    id = 1,
-                    name = "Workout 1",
-                    lastSession = Date(Date().time  - 3600 * 24)
-                ),
-                onClick = {}
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-fun HomeContentPreview() {
-    HomeContent(
-        openWorkout = {},
-        workouts = List(10) {
-            Workout(
-                id = it,
-                name = "Workout $it",
-                lastSession = Date(Date().time - 3600 * 24 * it)
-            )
-        }
-    )
-}
-
-@Preview
-@Composable
 fun HomeScaffoldPreview() {
     FitCubeTheme {
         Surface {
             HomeScaffold(
                 openWorkout = {},
                 openDialog = {},
-                workouts = emptyList()
+                workouts = List(5) {
+                    defaultHomeWorkout(it)
+                }
             )
         }
     }

@@ -2,6 +2,17 @@
     <string name="app_name">FitCube</string>
     <string name="no_workout_session">No session done</string>
     <string name="no_workout">No workout created yet !</string>
+    <string name="menu_back">Menu back\n</string>
+    <string name="no_image">No image\n</string>
+    <string name="channel_name">workout_session_channel\n</string>
+    <string name="channel_description">Channel for the permanennt notification of workout</string>
+    <string name="notification_title_default">Workout Session - Push</string>
+    <string name="notification_body_1_default">10lbs <b>10lbs</b> 10lbs 10lbs</string>
+    <string name="notification_body_2_default">Bench press (1/6)</string>
+    <string name="notification_title_big">Push - 01:23</string>
+    <string name="notification_button_next">Rest</string>
+    <string name="notification_button_change">Skip</string>
+    <string name="notification_button_prediction">Predictions</string>
     <plurals name="last_workout_session">
         <item quantity="one">Last session :1 day ago</item>
         <item quantity="other">Last session : %d days ago</item>

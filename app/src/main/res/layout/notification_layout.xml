@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="100dp"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/notification_title"
+                style="@style/TextAppearance.Compat.Notification.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_title_big" />
+
+            <TextView
+                android:id="@+id/notification_body_set"
+                style="@style/TextAppearance.Compat.Notification.Info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_body_1_default"/>
+
+            <TextView
+                android:id="@+id/notification_body_exercise"
+                style="@style/TextAppearance.Compat.Notification.Line2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/notification_body_2_default"
+                android:textStyle="italic"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="2"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            />
+
+        <ImageView
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:src="@drawable/image_test"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:contentDescription="Image" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/notification_button_next"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:drawableStart="@drawable/baseline_check_24"
+            android:background="@drawable/rounded_button"
+            android:paddingStart="5dp"
+            android:layout_marginStart="10dp"
+            android:text="@string/notification_button_next"
+            tools:ignore="RtlSymmetry" />
+
+        <Button
+            android:id="@+id/notification_button_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/rounded_button"
+            android:paddingStart="5dp"
+            android:drawableStart="@drawable/baseline_arrow_upward_24"
+            android:layout_marginStart="10dp"
+            android:text="@string/notification_button_change"
+            tools:ignore="RtlSymmetry" />
+
+        <Button
+            android:id="@+id/notification_button_prediction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/rounded_button"
+            android:drawableStart="@drawable/baseline_batch_prediction_24"
+            android:paddingEnd="10dp"
+            android:paddingStart="5dp"
+            android:layout_marginStart="10dp"
+            android:text="@string/notification_button_prediction"
+            tools:ignore="RtlSymmetry" />
+
+    </LinearLayout>
+
+
+</LinearLayout>

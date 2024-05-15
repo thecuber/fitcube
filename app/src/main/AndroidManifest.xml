@@ -13,9 +13,10 @@
         android:name=".FitCubeApplication"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+        android:theme="@style/FitCube"
         tools:targetApi="31">
-        <service android:name=".old.WorkoutMainService" />
+        <service android:name=".workout.session.WorkoutSessionNotificationService" />
+        <receiver android:name=".workout.session.NotificationBroadcastReceiver"/>
         <activity
             android:name=".FitCubeActivity"
             android:exported="true">
