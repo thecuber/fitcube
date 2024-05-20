@@ -50,7 +50,8 @@
         <ImageView
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:src="@drawable/image_test"
+            android:src="@drawable/preview_placeholder"
+            android:id="@+id/notification_image"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             android:contentDescription="Image" />
@@ -66,35 +67,25 @@
             android:id="@+id/notification_button_next"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:drawableStart="@drawable/baseline_check_24"
-            android:background="@drawable/rounded_button"
             android:paddingStart="5dp"
             android:layout_marginStart="10dp"
+            android:background="@android:color/transparent"
             android:text="@string/notification_button_next"
-            tools:ignore="RtlSymmetry" />
+            tools:ignore="RtlSymmetry"
+            android:textColor="@color/primary"
+            style="?android:attr/buttonBarButtonStyle" />
 
         <Button
             android:id="@+id/notification_button_switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/rounded_button"
             android:paddingStart="5dp"
-            android:drawableStart="@drawable/baseline_arrow_upward_24"
             android:layout_marginStart="10dp"
+            android:background="@android:color/transparent"
             android:text="@string/notification_button_change"
-            tools:ignore="RtlSymmetry" />
-
-        <Button
-            android:id="@+id/notification_button_prediction"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/rounded_button"
-            android:drawableStart="@drawable/baseline_batch_prediction_24"
-            android:paddingEnd="10dp"
-            android:paddingStart="5dp"
-            android:layout_marginStart="10dp"
-            android:text="@string/notification_button_prediction"
-            tools:ignore="RtlSymmetry" />
+            android:textColor="@color/primary"
+            tools:ignore="RtlSymmetry"
+            style="?android:attr/buttonBarButtonStyle" />
 
     </LinearLayout>
 

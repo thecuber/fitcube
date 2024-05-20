@@ -11,25 +11,35 @@ import javax.inject.Inject
 interface SessionState {
 
     fun start()
-    fun getState(): StateFlow<SessionUiState>
+    fun listenState(): StateFlow<SessionUiState>
+
+    fun getValue(): SessionUiState
     fun bindWorkout(workout: WorkoutWithExercises)
 
     fun startRest(timer: Int)
 
     fun timerTick(): Boolean
 
+    fun postRest()
+
+    fun onEnd(): MutableStateFlow<Boolean>
+
 }
 
 class SessionStateImpl @Inject constructor() : SessionState {
 
-    private val _uiState = MutableStateFlow(SessionUiState(SessionStatus.REST, 0, 0, 0, defaultWorkoutWithExercises(0), 0L))
+    private val _uiState = MutableStateFlow(SessionUiState(SessionStatus.WAITING, 0, 0, 0, defaultWorkoutWithExercises(0), 0L))
     private val state: StateFlow<SessionUiState> = _uiState
+
+    private val endTrigger = MutableStateFlow(false)
 
     override fun start() {
         _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE, started = System.currentTimeMillis())
     }
 
-    override fun getState() = state
+    override fun listenState() = state
+
+    override fun getValue() = state.value
 
     override fun bindWorkout(workout: WorkoutWithExercises) {
         _uiState.value = _uiState.value.copy(workout = workout)
@@ -42,10 +52,27 @@ class SessionStateImpl @Inject constructor() : SessionState {
     override fun timerTick(): Boolean {
         _uiState.value = _uiState.value.copy(restTimer = _uiState.value.restTimer - 1)
         if(_uiState.value.restTimer == 0) {
-            _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
+            postRest()
             return false
         }
         return true
     }
+
+    override fun postRest() {
+        var set = getValue().currentSet + 1
+        var ex = getValue().currentExercise
+        if (set == getValue().workout.exercises[getValue().currentExercise].exercise.prediction.size) {
+            set = 0
+            ex += 1
+            if (ex == getValue().workout.exercises.size) {
+                _uiState.value = _uiState.value.copy(status = SessionStatus.DONE)
+                endTrigger.value = true
+                return
+            }
+        }
+        _uiState.value = _uiState.value.copy(currentExercise = ex, currentSet = set)
+    }
+
+    override fun onEnd() = endTrigger
 
 }

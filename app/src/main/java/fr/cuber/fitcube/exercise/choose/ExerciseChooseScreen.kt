@@ -29,9 +29,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.defaultExerciseType
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
-import fr.cuber.fitcube.utils.DefaultIconParser
 import fr.cuber.fitcube.utils.FitCubeAppBarWithBack
-import fr.cuber.fitcube.utils.IconParser
+import fr.cuber.fitcube.utils.ExerciseIcon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,12 +53,6 @@ fun ExerciseChooseScreen(
                 val id = viewModel.createWorkoutExercise(it, workout)
                 openExercise(id.toInt())
             }
-        },
-        icon = {
-            IconParser(
-                exercise = it,
-                modifier = Modifier.fillMaxWidth(0.3f).aspectRatio(1f)
-            )
         })
 }
 
@@ -69,7 +62,6 @@ fun ExerciseChooseScaffold(
     exercises: List<ExerciseType>,
     back: () -> Unit,
     createWorkoutExercise: (ExerciseType) -> Unit,
-    icon: @Composable (ExerciseType) -> Unit,
     modifier: Modifier = Modifier
 
 ) {
@@ -81,15 +73,13 @@ fun ExerciseChooseScaffold(
         ExerciseChooseContent(
             modifier = modifier.padding(it),
             exercises = exercises,
-            createWorkoutExercise = createWorkoutExercise,
-            icon = icon
+            createWorkoutExercise = createWorkoutExercise
         )
     }
 }
 
 @Composable
 fun ExerciseChooseContent(
-    icon: @Composable (ExerciseType) -> Unit,
     exercises: List<ExerciseType>,
     modifier: Modifier = Modifier,
     createWorkoutExercise: (ExerciseType) -> Unit
@@ -105,7 +95,7 @@ fun ExerciseChooseContent(
         OutlinedTextField(value = string, onValueChange = { string = it}, label = { Text("Filter exercise") }, modifier = Modifier.fillMaxWidth(0.9f).padding(bottom = 10.dp))
         LazyColumn {
             items(ex) {
-                ExerciseChooseItem(exerciseIcon = icon, exercise = it,
+                ExerciseChooseItem(exercise = it,
                     Modifier.clickable {
                         createWorkoutExercise(it)
                     })
@@ -117,7 +107,6 @@ fun ExerciseChooseContent(
 
 @Composable
 fun ExerciseChooseItem(
-    exerciseIcon: @Composable (ExerciseType) -> Unit,
     exercise: ExerciseType,
     modifier: Modifier
 ) {
@@ -125,7 +114,7 @@ fun ExerciseChooseItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(vertical = 10.dp)
     ) {
-        exerciseIcon(exercise)
+        ExerciseIcon(exercise)
         Column(modifier = Modifier.padding(horizontal = 10.dp)) {
             Text(exercise.name, fontWeight = FontWeight.Bold)
             Text(fontStyle = FontStyle.Italic, text = exercise.description)
@@ -144,15 +133,7 @@ fun ExerciseScaffoldPreview() {
                     defaultExerciseType(it)
                 },
                 back = {},
-                createWorkoutExercise = {},
-                icon = {
-                    DefaultIconParser(
-                        exercise = it,
-                        modifier = Modifier
-                            .fillMaxWidth(0.3f)
-                            .aspectRatio(1f)
-                    )
-                }
+                createWorkoutExercise = {}
             )
         }
     }

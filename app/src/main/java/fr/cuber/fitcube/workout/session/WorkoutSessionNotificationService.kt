@@ -10,10 +10,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.text.Html
 import android.widget.RemoteViews
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -22,8 +24,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.SessionState
 import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
+import fr.cuber.fitcube.utils.boldPrediction
 import fr.cuber.fitcube.utils.parseTimer
-import fr.cuber.fitcube.utils.showPrediction
 import fr.cuber.fitcube.workout.session.WorkoutSessionNotificationService.NotificationConstants.CHANNEL_ID
 import fr.cuber.fitcube.workout.session.WorkoutSessionNotificationService.NotificationConstants.NOTIFICATION_ID
 import kotlinx.coroutines.CoroutineScope
@@ -32,16 +34,18 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class WorkoutSessionNotificationService: Service() {
+class WorkoutSessionNotificationService : Service() {
 
     private val binder = LocalBinder()
 
     @Inject
     lateinit var session: SessionState
+
     object NotificationConstants {
         const val NOTIFICATION_ID = 1
         const val CHANNEL_ID = "workout_session"
     }
+
     private lateinit var smallLayout: RemoteViews
     private lateinit var bigLayout: RemoteViews
 
@@ -52,9 +56,9 @@ class WorkoutSessionNotificationService: Service() {
 
     init {
         CoroutineScope(Dispatchers.Main).launch {
-            session.getState().collect { newState ->
-                // Call your function to rebuild the notification here
-                updateNotification(newState)
+            session.listenState().collect { newState ->
+                if (newState.status != SessionStatus.WAITING && newState.workout.workout.id != 0)
+                    updateNotification(newState)
             }
         }
     }
@@ -67,7 +71,12 @@ class WorkoutSessionNotificationService: Service() {
         }
         RemoteViews(packageName, R.layout.notification_layout).apply {
             bigLayout = this
-            val intent = PendingIntent.getBroadcast(applicationContext, 0, Intent(applicationContext, NotificationBroadcastReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)
+            val intent = PendingIntent.getBroadcast(
+                applicationContext,
+                0,
+                Intent(applicationContext, NotificationBroadcastReceiver::class.java).also { it.action = "REST" },
+                PendingIntent.FLAG_IMMUTABLE
+            )
             bigLayout.setOnClickPendingIntent(R.id.notification_button_next, intent)
         }
     }
@@ -77,12 +86,36 @@ class WorkoutSessionNotificationService: Service() {
         fun parsing(vals: List<String>): String {
             return vals.joinToString(" - ")
         }
-        bigLayout.setTextViewText(R.id.notification_title, parsing(listOf(state.workout.workout.name, parseTimer(state.restTimer))))
-        bigLayout.setTextViewText(R.id.notification_body_exercise,  showPrediction(state.workout.exercises[state.currentExercise].exercise.prediction))
-        bigLayout.setTextViewText(R.id.notification_body_set, "${state.workout.exercises[state.currentExercise].type.name} (${state.currentExercise + 1}/${state.workout.exercises.size})")
-
+        bigLayout.setTextViewText(
+            R.id.notification_title,
+            parsing(listOf(state.workout.workout.name, parseTimer(state.restTimer)))
+        )
+        bigLayout.setTextViewText(
+            R.id.notification_body_exercise,
+            Html.fromHtml(
+                boldPrediction(
+                    state.workout.exercises[state.currentExercise].exercise.prediction,
+                    state.currentSet
+                ), Html.FROM_HTML_MODE_COMPACT
+            )
+        )
+        try {
+            val bitmapState =
+                BitmapFactory.decodeStream(applicationContext.assets.open("images/${state.workout.exercises[state.currentExercise].type.id}.jpg"))
+            bigLayout.setImageViewBitmap(R.id.notification_image, bitmapState)
+        } catch (e: Exception) {
+            print(e.stackTrace)
+        }
+        bigLayout.setTextViewText(
+            R.id.notification_body_set,
+            "${state.workout.exercises[state.currentExercise].type.name} (${state.currentExercise + 1}/${state.workout.exercises.size})"
+        )
+        bigLayout.setBoolean(R.id.notification_button_next, "setEnabled", state.status != SessionStatus.REST)
         //Collapsed notification
-        smallLayout.setTextViewText(R.id.notification_title_small, "Workout session - " + state.workout.workout.name)
+        smallLayout.setTextViewText(
+            R.id.notification_title_small,
+            "Workout session - " + state.workout.workout.name
+        )
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(smallLayout)
@@ -99,7 +132,6 @@ class WorkoutSessionNotificationService: Service() {
                     Manifest.permission.POST_NOTIFICATIONS
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                println("AIE")
                 return@with
             }
             // notificationId is a unique int for each notification that you must define.
@@ -117,18 +149,25 @@ class WorkoutSessionNotificationService: Service() {
         notificationManager.createNotificationChannel(mChannel)
     }
 
-    fun start() {
-        session.start()
-    }
-
     override fun onBind(intent: Intent): IBinder {
         createNotificationChannel()
         return binder
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        println("IM UNBINDING")
+        Intent().also {
+            it.action = "STOP"
+            sendBroadcast(it)
+        }
+        stopSelf()
+        return super.onUnbind(intent)
+    }
+
 }
 
 enum class SessionStatus {
+    WAITING,
     REST,
     EXERCISE,
     TIMING,
@@ -149,17 +188,25 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var session: SessionState
+
+    private val mainHandler = Handler(Looper.getMainLooper())
     override fun onReceive(context: Context?, intent: Intent?) {
-        startRest()
+        when (intent?.action) {
+            "REST" -> startRest()
+            "STOP" -> stopTimer()
+        }
+    }
+
+    private fun stopTimer() {
+        mainHandler.removeCallbacksAndMessages(null)
     }
 
     private fun startRest() {
-        val timer = 120
+        val timer = 5
         session.startRest(timer)
-        val mainHandler = Handler(Looper.getMainLooper())
         mainHandler.post(object : Runnable {
             override fun run() {
-                if(session.timerTick())
+                if (session.timerTick())
                     mainHandler.postDelayed(this, 1000)
             }
         })

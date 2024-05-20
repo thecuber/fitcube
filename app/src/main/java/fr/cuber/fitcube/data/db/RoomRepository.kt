@@ -4,6 +4,7 @@ import fr.cuber.fitcube.data.db.dao.ExerciseDao
 import fr.cuber.fitcube.data.db.dao.SessionDao
 import fr.cuber.fitcube.data.db.dao.WorkoutDao
 import fr.cuber.fitcube.data.db.entity.ExerciseType
+import fr.cuber.fitcube.data.db.entity.Session
 import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import javax.inject.Inject
@@ -35,5 +36,7 @@ class RoomRepository @Inject constructor(
     suspend fun createWorkoutExercise(ex: WorkoutExercise) = exerciseDao.createWorkoutExercise(ex)
 
     fun getSessions(id: Int) = sessionDao.getSessionsByWorkoutId(id)
+
+    suspend fun createSession(session: Session) = sessionDao.createSession(session)
 
 }

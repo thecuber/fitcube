@@ -34,11 +34,10 @@ import androidx.wear.compose.material.Switch
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
-import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
-import fr.cuber.fitcube.utils.DefaultIconParser
 import fr.cuber.fitcube.utils.DividerSpaced
+import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.WorkoutExerciseAppBar
 import fr.cuber.fitcube.utils.parsePrediction
 import fr.cuber.fitcube.utils.showPrediction
@@ -69,7 +68,6 @@ fun WorkoutExerciseScreen(
         },
         onSave = {
             viewModel.saveWorkoutExercise(exercise.exercise)
-
         }
     )
 }
@@ -80,8 +78,7 @@ fun WorkoutExerciseScaffold(
     exercise: FullExercise,
     setExercise: (FullExercise) -> Unit,
     back: () -> Unit,
-    onSave: () -> Unit,
-    icon: @Composable (ExerciseType) -> Unit = { DefaultIconParser(exercise = it) },
+    onSave: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -98,7 +95,6 @@ fun WorkoutExerciseScaffold(
     ) {
         WorkoutExerciseContent(
             exercise = exercise,
-            icon = icon,
             modifier = modifier.padding(it),
             setExercise = setExercise
         )
@@ -110,8 +106,7 @@ fun WorkoutExerciseScaffold(
 fun WorkoutExerciseContent(
     modifier: Modifier = Modifier,
     exercise: FullExercise,
-    setExercise: (FullExercise) -> Unit,
-    icon: @Composable (ExerciseType) -> Unit = { DefaultIconParser(exercise = it) },
+    setExercise: (FullExercise) -> Unit
 ) {
     val regexPattern = "(\\d+x\\d+\\s?)+"
     var prediction by remember { mutableStateOf("") }
@@ -121,7 +116,15 @@ fun WorkoutExerciseContent(
         )
     }
     if (validParsing) {
-        setExercise(exercise.copy(exercise = exercise.exercise.copy(prediction = parsePrediction(prediction))))
+        setExercise(
+            exercise.copy(
+                exercise = exercise.exercise.copy(
+                    prediction = parsePrediction(
+                        prediction
+                    )
+                )
+            )
+        )
     }
     Column(
         modifier = modifier
@@ -137,7 +140,7 @@ fun WorkoutExerciseContent(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            icon(exercise.type)
+            ExerciseIcon(exercise.type, Modifier)
             Spacer(modifier = Modifier.padding(5.dp))
             Text(text = exercise.type.description, fontStyle = FontStyle.Italic)
             ExerciseModeSelect(mode = exercise.exercise.mode) {
@@ -155,7 +158,7 @@ fun WorkoutExerciseContent(
                 )
             )
             Spacer(modifier = Modifier.padding(5.dp))
-            TextField(value = prediction, onValueChange = {
+            TextField(value = prediction, maxLines = 1, onValueChange = {
                 validParsing = it.matches(regexPattern.toRegex())
                 prediction = it
             }, isError = !validParsing, label = { Text("Prediction") })
@@ -213,7 +216,8 @@ fun WorkoutExerciseContentPreview() {
             WorkoutExerciseScaffold(exercise = defaultFullExercise(50),
                 back = {},
                 onSave = {},
-                setExercise = {})
+                setExercise = {}
+            )
         }
     }
 }

@@ -1,9 +1,12 @@
 package fr.cuber.fitcube.utils
 
-import fr.cuber.fitcube.workout.session.SessionStatus
-
 fun showPrediction(prediction: List<Double>, msg: Boolean = false) = if(prediction.isNotEmpty()) { prediction.joinToString(separator = "lbs, ", postfix = "lbs") } else if (msg) { "Empty prediction" } else { "" }
 
+fun boldPrediction(prediction: List<Double>, index: Int): String {
+    return prediction.mapIndexed { i, value ->
+        if (i == index) "<b>${value}lbs</b>" else "${value}lbs"
+    }.joinToString(separator = ", ")
+}
 fun parsePrediction(prediction: String): List<Double> {
     val arr = prediction.split(" ")
     var result = emptyArray<Double>()
@@ -22,17 +25,9 @@ fun parseTimer(timer: Int): String {
 }
 
 fun parseDuration(timer: Long): String {
-    val t = timer / (1000 * 60)
-    val hours = (t / 60).toString().padStart(2, '0')
-    val minutes = (t % 60).toString().padStart(2, '0').substring(0, 2)
-    return "${hours}h ${minutes}m"
-}
-
-fun parseStatus(status: SessionStatus): String {
-    return when(status) {
-        SessionStatus.REST -> "Waiting start..."
-        SessionStatus.EXERCISE -> "Working out"
-        SessionStatus.TIMING -> "Resting"
-        SessionStatus.DONE -> "Workout done"
-    }
+    val t = timer / 1000
+    val seconds = (t % 60).toString().padStart(2, '0')
+    val minutes = ((t / 60) % 60).toString().padStart(2, '0')
+    val hours = (t / 3600).toString().padStart(2, '0')
+    return "${hours}h ${minutes}m ${seconds}s"
 }

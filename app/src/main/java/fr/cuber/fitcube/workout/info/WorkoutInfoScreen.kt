@@ -51,9 +51,7 @@ import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.defaultSession
 import fr.cuber.fitcube.data.db.entity.defaultWorkout
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
-import fr.cuber.fitcube.utils.DefaultIconParser
-import fr.cuber.fitcube.utils.IconParser
-import fr.cuber.fitcube.utils.IconParserFun
+import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.showPrediction
 import java.text.SimpleDateFormat
@@ -83,13 +81,8 @@ fun WorkoutInfoScreen(
         back = back,
         modifier = modifier,
         openExercise = openExercise,
-        addExercise = addExercise,
-        icon = { ex, mod ->
-            IconParser(
-                exercise = ex,
-                modifier = mod
-            )
-        })
+        addExercise = addExercise
+    )
 }
 
 @Composable
@@ -101,13 +94,16 @@ fun WorkoutInfoScaffold(
     back: () -> Unit,
     addExercise: () -> Unit,
     startWorkout: () -> Unit,
-    icon: IconParserFun,
     modifier: Modifier = Modifier
 
 ) {
     Scaffold(
         topBar = {
-            WorkoutInfoAppBar(title = workout.name, onBack = back, onAdd = addExercise, onRemove = {})
+            WorkoutInfoAppBar(
+                title = workout.name,
+                onBack = back,
+                onAdd = addExercise,
+                onRemove = {})
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
@@ -121,7 +117,6 @@ fun WorkoutInfoScaffold(
             openExercise = openExercise,
             modifier = modifier.padding(it),
             exercises = exercises,
-            icon = icon,
             sessions = sessions
         )
     }
@@ -171,9 +166,25 @@ fun WorkoutInfoStatistics(
     modifier: Modifier = Modifier
 ) {
     val total = sessions.size
-    val last = if(sessions.isEmpty()) { "None" } else {SimpleDateFormat("d MMMM yyyy").format(Date(sessions.last().date)) }
-    val estimate = if(sessions.isEmpty()) { 0 } else { sessions.sumOf { it.duration } / sessions.size }
-    Column(modifier = modifier.border(1.dp, color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(20)).padding(10.dp)) {
+    val last = if (sessions.isEmpty()) {
+        "None"
+    } else {
+        SimpleDateFormat("d MMMM yyyy").format(Date(sessions.last().date))
+    }
+    val estimate = if (sessions.isEmpty()) {
+        0
+    } else {
+        sessions.sumOf { it.duration } / sessions.size
+    }
+    Column(
+        modifier = modifier
+            .border(
+                1.dp,
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(20)
+            )
+            .padding(10.dp)
+    ) {
         Text("Total sessions: $total")
         Text("Estimate time: ${parseDuration(estimate)}")
         Text("Last session: $last")
@@ -183,7 +194,6 @@ fun WorkoutInfoStatistics(
 @Composable
 fun WorkoutInfoContent(
     openExercise: (WorkoutExercise) -> Unit,
-    icon: IconParserFun,
     exercises: List<FullExercise>,
     modifier: Modifier = Modifier,
     sessions: List<Session>
@@ -194,11 +204,16 @@ fun WorkoutInfoContent(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        WorkoutInfoStatistics(sessions = sessions, modifier = Modifier.padding(10.dp).fillMaxWidth())
+        WorkoutInfoStatistics(
+            sessions = sessions,
+            modifier = Modifier
+                .padding(10.dp)
+                .fillMaxWidth()
+        )
         Divider()
-        LazyColumn{
-            items(exercises){
-                WorkoutInfoExerciseItem(exerciseIcon = icon, exercise = it, modifier = Modifier
+        LazyColumn {
+            items(exercises) {
+                WorkoutInfoExerciseItem(exercise = it, modifier = Modifier
                     .fillMaxWidth()
                     .clickable { openExercise(it.exercise) })
             }
@@ -209,7 +224,6 @@ fun WorkoutInfoContent(
 
 @Composable
 fun WorkoutInfoExerciseItem(
-    exerciseIcon: IconParserFun,
     exercise: FullExercise,
     modifier: Modifier
 ) {
@@ -230,10 +244,12 @@ fun WorkoutInfoExerciseItem(
                 }
             )
         }
-        exerciseIcon(exercise.type,
+        ExerciseIcon(
+            exercise.type,
             Modifier
                 .fillMaxWidth(0.3f)
-                .aspectRatio(1f))
+                .aspectRatio(1f)
+        )
     }
 }
 
@@ -267,9 +283,6 @@ fun WorkoutInfoScaffoldPreview() {
                 startWorkout = {},
                 sessions = List(10) {
                     defaultSession()
-                },
-                icon = { ex, mod ->
-                    DefaultIconParser(exercise = ex.copy(id = 50), modifier = mod)
                 }
             )
         }
