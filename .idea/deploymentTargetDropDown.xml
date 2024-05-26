@@ -8,7 +8,13 @@
       <entry key="HomeWorkoutItemPreview">
         <State />
       </entry>
+      <entry key="PredictionFieldPreview">
+        <State />
+      </entry>
       <entry key="PreviewMessageCard">
+        <State />
+      </entry>
+      <entry key="WorkoutSessionPredictionsPreview">
         <State />
       </entry>
       <entry key="app">

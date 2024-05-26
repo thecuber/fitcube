@@ -58,6 +58,11 @@ class WorkoutSessionViewModel @Inject constructor(
         this.context = context
     }
 
+    fun setNextPrediction(prediction: List<Double>, index: Int) = sessionState.setNextPrediction(prediction, index)
+
+    fun setCurrentPrediction(prediction: List<Double>, index: Int) = sessionState.setCurrentPrediction(prediction, index)
+
+
     fun getWorkout(workoutId: Int) = dbRepository.getWorkout(workoutId)
     fun bindWorkout(workout: WorkoutWithExercises) = sessionState.bindWorkout(workout)
     fun start() {
@@ -77,6 +82,10 @@ class WorkoutSessionViewModel @Inject constructor(
             m
         )
         dbRepository.createSession(session)
+    }
+
+    fun nextState() {
+        notificationService.startRest()
     }
 
 }

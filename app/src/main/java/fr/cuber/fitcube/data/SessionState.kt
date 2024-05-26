@@ -1,9 +1,9 @@
 package fr.cuber.fitcube.data
 
 import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
-import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
 import fr.cuber.fitcube.workout.session.SessionStatus
 import fr.cuber.fitcube.workout.session.SessionUiState
+import fr.cuber.fitcube.workout.session.defaultSessionUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -23,18 +23,24 @@ interface SessionState {
     fun postRest()
 
     fun onEnd(): MutableStateFlow<Boolean>
+    fun setNextPrediction(prediction: List<Double>, index: Int)
+
+    fun setCurrentPrediction(prediction: List<Double>, index: Int)
 
 }
 
 class SessionStateImpl @Inject constructor() : SessionState {
 
-    private val _uiState = MutableStateFlow(SessionUiState(SessionStatus.WAITING, 0, 0, 0, defaultWorkoutWithExercises(0), 0L))
+    private val _uiState = MutableStateFlow(defaultSessionUiState(0))
     private val state: StateFlow<SessionUiState> = _uiState
 
     private val endTrigger = MutableStateFlow(false)
 
     override fun start() {
-        _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE, started = System.currentTimeMillis())
+        _uiState.value = _uiState.value.copy(
+            status = SessionStatus.EXERCISE,
+            started = System.currentTimeMillis()
+        )
     }
 
     override fun listenState() = state
@@ -42,7 +48,9 @@ class SessionStateImpl @Inject constructor() : SessionState {
     override fun getValue() = state.value
 
     override fun bindWorkout(workout: WorkoutWithExercises) {
-        _uiState.value = _uiState.value.copy(workout = workout)
+        _uiState.value = _uiState.value.copy(
+            workout = workout,
+            predictions = workout.exercises.map { it.exercise.prediction })
     }
 
     override fun startRest(timer: Int) {
@@ -51,7 +59,7 @@ class SessionStateImpl @Inject constructor() : SessionState {
 
     override fun timerTick(): Boolean {
         _uiState.value = _uiState.value.copy(restTimer = _uiState.value.restTimer - 1)
-        if(_uiState.value.restTimer == 0) {
+        if (_uiState.value.restTimer == 0) {
             postRest()
             return false
         }
@@ -70,9 +78,25 @@ class SessionStateImpl @Inject constructor() : SessionState {
                 return
             }
         }
-        _uiState.value = _uiState.value.copy(currentExercise = ex, currentSet = set)
+        _uiState.value = _uiState.value.copy(currentExercise = ex, currentSet = set, status = SessionStatus.EXERCISE)
     }
 
     override fun onEnd() = endTrigger
+    override fun setNextPrediction(prediction: List<Double>, index: Int) {
+        val predictions = _uiState.value.predictions.toMutableList()
+        predictions[index] = prediction
+        _uiState.value = _uiState.value.copy(predictions = predictions)
+    }
+
+    override fun setCurrentPrediction(prediction: List<Double>, index: Int) {
+        _uiState.value =
+            _uiState.value.copy(workout = _uiState.value.workout.copy(exercises = _uiState.value.workout.exercises.mapIndexed { i, fullExercise ->
+                if (index == i) {
+                    fullExercise.copy(exercise = fullExercise.exercise.copy(prediction = prediction))
+                } else {
+                    fullExercise
+                }
+            }))
+    }
 
 }

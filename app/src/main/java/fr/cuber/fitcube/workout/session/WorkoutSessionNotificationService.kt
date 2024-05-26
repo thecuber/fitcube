@@ -24,6 +24,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.SessionState
 import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
+import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
 import fr.cuber.fitcube.utils.boldPrediction
 import fr.cuber.fitcube.utils.parseTimer
 import fr.cuber.fitcube.workout.session.WorkoutSessionNotificationService.NotificationConstants.CHANNEL_ID
@@ -74,7 +75,10 @@ class WorkoutSessionNotificationService : Service() {
             val intent = PendingIntent.getBroadcast(
                 applicationContext,
                 0,
-                Intent(applicationContext, NotificationBroadcastReceiver::class.java).also { it.action = "REST" },
+                Intent(
+                    applicationContext,
+                    NotificationBroadcastReceiver::class.java
+                ).also { it.action = "REST" },
                 PendingIntent.FLAG_IMMUTABLE
             )
             bigLayout.setOnClickPendingIntent(R.id.notification_button_next, intent)
@@ -88,7 +92,19 @@ class WorkoutSessionNotificationService : Service() {
         }
         bigLayout.setTextViewText(
             R.id.notification_title,
-            parsing(listOf(state.workout.workout.name, parseTimer(state.restTimer)))
+            when (state.status) {
+                SessionStatus.WAITING -> {
+                    "Waiting for workout to start..."
+                }
+
+                SessionStatus.REST -> {
+                    parsing(listOf(state.workout.workout.name, parseTimer(state.restTimer)))
+                }
+
+                else -> {
+                    state.workout.workout.name
+                }
+            }
         )
         bigLayout.setTextViewText(
             R.id.notification_body_exercise,
@@ -110,7 +126,11 @@ class WorkoutSessionNotificationService : Service() {
             R.id.notification_body_set,
             "${state.workout.exercises[state.currentExercise].type.name} (${state.currentExercise + 1}/${state.workout.exercises.size})"
         )
-        bigLayout.setBoolean(R.id.notification_button_next, "setEnabled", state.status != SessionStatus.REST)
+        bigLayout.setBoolean(
+            R.id.notification_button_next,
+            "setEnabled",
+            state.status != SessionStatus.REST
+        )
         //Collapsed notification
         smallLayout.setTextViewText(
             R.id.notification_title_small,
@@ -120,7 +140,7 @@ class WorkoutSessionNotificationService : Service() {
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(smallLayout)
             .setCustomBigContentView(bigLayout)
-            .setUsesChronometer(true)
+            .setUsesChronometer(state.status != SessionStatus.WAITING)
             .setWhen(state.started)
             .setContentText("Workout text")
             .setContentTitle("Workout session")
@@ -164,6 +184,16 @@ class WorkoutSessionNotificationService : Service() {
         return super.onUnbind(intent)
     }
 
+    fun startRest() {
+        Intent(
+            applicationContext,
+            NotificationBroadcastReceiver::class.java
+        ).also {
+            it.action = "REST"
+            sendBroadcast(it)
+        }
+    }
+
 }
 
 enum class SessionStatus {
@@ -180,8 +210,20 @@ data class SessionUiState(
     val currentExercise: Int,
     val restTimer: Int,
     val workout: WorkoutWithExercises,
-    val started: Long
+    val started: Long,
+    val predictions: List<List<Double>>
 )
+
+fun defaultSessionUiState(size: Int) = SessionUiState(
+    status = SessionStatus.WAITING,
+    0,
+    0,
+    0,
+    defaultWorkoutWithExercises(size),
+    0L,
+    List(size) { List(4) { 10.0 } }
+)
+
 
 @AndroidEntryPoint
 class NotificationBroadcastReceiver : BroadcastReceiver() {
@@ -202,7 +244,7 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
     }
 
     private fun startRest() {
-        val timer = 5
+        val timer = 10
         session.startRest(timer)
         mainHandler.post(object : Runnable {
             override fun run() {

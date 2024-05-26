@@ -50,6 +50,6 @@ data class WorkoutWithExercises(
 fun defaultWorkoutWithExercises(size: Int) = WorkoutWithExercises(
     workout = defaultWorkout(),
     exercises = List(size) {
-        defaultFullExercise(it)
+        defaultFullExercise(it + 1)
     }
 )
