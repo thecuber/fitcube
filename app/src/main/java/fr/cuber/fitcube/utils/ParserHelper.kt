@@ -1,5 +1,11 @@
 package fr.cuber.fitcube.utils
 
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+
 fun showPrediction(prediction: List<Double>, msg: Boolean = false) = if(prediction.isNotEmpty()) { prediction.joinToString(separator = "lbs, ", postfix = "lbs") } else if (msg) { "Empty prediction" } else { "" }
 
 fun boldPrediction(prediction: List<Double>, index: Int): String {
@@ -7,6 +13,19 @@ fun boldPrediction(prediction: List<Double>, index: Int): String {
         if (i == index) "<b>${value}lbs</b>" else "${value}lbs"
     }.joinToString(separator = ", ")
 }
+
+fun textBoldPrediction(prediction: List<Double>, index: Int): AnnotatedString {
+   return buildAnnotatedString {
+        prediction.forEachIndexed { i, value ->
+            val text =  "${value}lbs"
+            withStyle(style = SpanStyle(fontWeight = if(i == index) FontWeight.Bold else FontWeight.Normal)) {
+                append(text)
+            }
+            if(i < prediction.size - 1) append(", ")
+        }
+    }
+}
+
 fun parsePrediction(prediction: String): List<Double> {
     val arr = prediction.split(" ")
     var result = emptyArray<Double>()

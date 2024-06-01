@@ -3,7 +3,6 @@ package fr.cuber.fitcube.exercise.choose
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,8 +28,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.defaultExerciseType
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
-import fr.cuber.fitcube.utils.FitCubeAppBarWithBack
 import fr.cuber.fitcube.utils.ExerciseIcon
+import fr.cuber.fitcube.utils.FitCubeAppBarWithBack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -114,7 +113,7 @@ fun ExerciseChooseItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(vertical = 10.dp)
     ) {
-        ExerciseIcon(exercise)
+        ExerciseIcon(exercise.id)
         Column(modifier = Modifier.padding(horizontal = 10.dp)) {
             Text(exercise.name, fontWeight = FontWeight.Bold)
             Text(fontStyle = FontStyle.Italic, text = exercise.description)

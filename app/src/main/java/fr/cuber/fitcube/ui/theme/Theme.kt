@@ -5,6 +5,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -14,9 +15,10 @@ import fr.cuber.fitcube.R
 
 private val LightColorScheme = lightColorScheme(
     primary = md_theme_light_primary,
-    onPrimary = md_theme_light_onPrimary,
-    primaryContainer = md_theme_light_primaryContainer,
+    secondary = md_theme_light_secondary,
     surfaceVariant = surfaceVariant,
+    onSurfaceVariant = Color.Black,
+    tertiary = md_theme_light_tertiary,
     // ..
 )
 private val DarkColorScheme = darkColorScheme(

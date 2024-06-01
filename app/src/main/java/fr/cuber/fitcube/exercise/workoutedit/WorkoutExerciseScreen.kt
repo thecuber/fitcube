@@ -140,7 +140,7 @@ fun WorkoutExerciseContent(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            ExerciseIcon(exercise.type, Modifier)
+            ExerciseIcon(exercise.type.id, Modifier)
             Spacer(modifier = Modifier.padding(5.dp))
             Text(text = exercise.type.description, fontStyle = FontStyle.Italic)
             ExerciseModeSelect(mode = exercise.exercise.mode) {

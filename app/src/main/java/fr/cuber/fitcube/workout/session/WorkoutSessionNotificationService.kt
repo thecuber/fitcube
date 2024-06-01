@@ -98,7 +98,7 @@ class WorkoutSessionNotificationService : Service() {
                 }
 
                 SessionStatus.REST -> {
-                    parsing(listOf(state.workout.workout.name, parseTimer(state.restTimer)))
+                    parsing(listOf(state.workout.workout.name, parseTimer(state.timer)))
                 }
 
                 else -> {
@@ -208,10 +208,11 @@ data class SessionUiState(
     val status: SessionStatus,
     val currentSet: Int,
     val currentExercise: Int,
-    val restTimer: Int,
+    val timer: Int,
     val workout: WorkoutWithExercises,
     val started: Long,
-    val predictions: List<List<Double>>
+    val predictions: List<List<Double>>,
+    val elapsedTime: Long
 )
 
 fun defaultSessionUiState(size: Int) = SessionUiState(
@@ -221,7 +222,8 @@ fun defaultSessionUiState(size: Int) = SessionUiState(
     0,
     defaultWorkoutWithExercises(size),
     0L,
-    List(size) { List(4) { 10.0 } }
+    List(size) { List(4) { 10.0 } },
+    0L
 )
 
 

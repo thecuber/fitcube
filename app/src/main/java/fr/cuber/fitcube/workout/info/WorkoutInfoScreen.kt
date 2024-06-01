@@ -245,7 +245,7 @@ fun WorkoutInfoExerciseItem(
             )
         }
         ExerciseIcon(
-            exercise.type,
+            exercise.type.id,
             Modifier
                 .fillMaxWidth(0.3f)
                 .aspectRatio(1f)

@@ -54,12 +54,12 @@ class SessionStateImpl @Inject constructor() : SessionState {
     }
 
     override fun startRest(timer: Int) {
-        _uiState.value = _uiState.value.copy(status = SessionStatus.REST, restTimer = timer)
+        _uiState.value = _uiState.value.copy(status = SessionStatus.REST, timer = timer)
     }
 
     override fun timerTick(): Boolean {
-        _uiState.value = _uiState.value.copy(restTimer = _uiState.value.restTimer - 1)
-        if (_uiState.value.restTimer == 0) {
+        _uiState.value = _uiState.value.copy(timer = _uiState.value.timer - 1)
+        if (_uiState.value.timer == 0) {
             postRest()
             return false
         }
