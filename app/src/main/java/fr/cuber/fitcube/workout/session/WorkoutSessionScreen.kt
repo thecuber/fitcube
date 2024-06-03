@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -59,6 +62,7 @@ import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.PredictionField
 import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.parseTimer
+import fr.cuber.fitcube.utils.showPrediction
 
 
 @Composable
@@ -205,12 +209,19 @@ fun WorkoutSessionContent(
             elapsedTime = state.elapsedTime
         )
         if (state.currentExercise < exerciseCount - 1) {
-            val next = state.workout.exercises[state.currentExercise + 1]
             WorkoutSessionNextExercise(
-                image = next.type.id,
-                name = next.type.name,
+                exercises = state.workout.exercises,
                 exerciseIndex = state.currentExercise + 1,
-                exerciseCount = exerciseCount
+                exerciseCount = exerciseCount,
+                expanded = expanded,
+                onSwap = { a, b -> a + b },
+                setExpanded = {
+                    expanded = if (expanded == Expanded.EXERCISES) {
+                        Expanded.DEFAULT
+                    } else {
+                        Expanded.EXERCISES
+                    }
+                }
             )
         }
     }
@@ -343,7 +354,7 @@ fun WorkoutSessionActions(
             Spacer(modifier = Modifier.padding(end = 10.dp))
         }
         Text(
-            text = "Ellapsed time: ${parseDuration(elapsedTime)}",
+            text = "Elapsed time: ${parseDuration(elapsedTime)}",
             fontStyle = FontStyle.Italic,
             modifier = Modifier.padding(horizontal = 10.dp)
         )
@@ -379,33 +390,85 @@ fun WorkoutSessionActionsPreview() {
 @Composable
 fun WorkoutSessionNextExercise(
     modifier: Modifier = Modifier,
-    image: Int,
-    name: String,
+    expanded: Expanded,
+    setExpanded: () -> Unit,
     exerciseIndex: Int,
-    exerciseCount: Int
+    exerciseCount: Int,
+    exercises: List<FullExercise>,
+    onSwap: (Int, Int) -> Unit
 ) {
-    Divider()
-    Row(
-        modifier = modifier
-            .padding(10.dp)
-            .fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+    var mod = modifier
+        .padding(10.dp)
+        .fillMaxWidth()
+        .animateContentSize()
+        .clickable { setExpanded() }
+    if (expanded == Expanded.EXERCISES) {
+        mod = mod.fillMaxHeight(0.3f)
+    }
+    Column(
+        modifier = mod,
     ) {
-        Column {
+        if (expanded == Expanded.EXERCISES) {
             Text(
                 "Coming up",
                 modifier = Modifier.padding(bottom = 5.dp),
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
             )
-            Text("$name (${exerciseIndex + 1}/$exerciseCount)", fontStyle = FontStyle.Italic)
+            Divider()
+            LazyColumn {
+                itemsIndexed(exercises.subList(exerciseIndex, exerciseCount)) { id, exercise ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("${exercise.type.name} (${exerciseIndex + 1 + id}/$exerciseCount)")
+                            Text(
+                                showPrediction(exercise.exercise.prediction),
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 14.sp
+                            )
+                        }
+                        ExerciseIcon(
+                            id = exercise.type.id, modifier = Modifier
+                                .fillMaxWidth(0.25f)
+                                .aspectRatio(1f)
+                        )
+                    }
+                    Divider()
+                }
+            }
+        } else {
+            val ex = exercises[exerciseIndex]
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column {
+                    Text(
+                        "Coming up",
+                        modifier = Modifier.padding(bottom = 5.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${ex.type.name} (${exerciseIndex + 1}/$exerciseCount)",
+                        fontStyle = FontStyle.Italic
+                    )
+                }
+                ExerciseIcon(
+                    id = ex.type.id, modifier = Modifier
+                        .fillMaxWidth(0.25f)
+                        .aspectRatio(1f)
+                )
+            }
         }
-        ExerciseIcon(
-            id = image, modifier = Modifier
-                .fillMaxWidth(0.3f)
-                .aspectRatio(1f)
-        )
     }
 }
+
 
 @Preview
 @Composable
@@ -414,10 +477,12 @@ fun WorkoutSessionNextExercisePreview() {
         Surface {
             WorkoutSessionNextExercise(
                 modifier = Modifier.padding(10.dp),
-                image = 0,
-                name = "Bench press",
                 exerciseCount = 10,
-                exerciseIndex = 1
+                exerciseIndex = 1,
+                expanded = Expanded.DEFAULT,
+                setExpanded = {},
+                exercises = List(10) { defaultFullExercise(it) },
+                onSwap = { a, b -> a + b }
             )
         }
     }
