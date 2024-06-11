@@ -8,7 +8,6 @@ import fr.cuber.fitcube.FitCubeScreens.EXERCISE_EDIT_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.HOME_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.WORKOUT_INFO_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.WORKOUT_SESSION_SCREEN
-import fr.cuber.fitcube.data.db.entity.Workout
 
 private object FitCubeScreens {
     const val HOME_SCREEN = "home"
@@ -32,8 +31,8 @@ object FitCubeRoutes {
 }
 
 class FitCubeNavigationActions(private val navHostController: NavHostController) {
-    fun openWorkout(workout: Workout) {
-        navHostController.navigate("${WORKOUT_INFO_SCREEN}/${workout.id}")
+    fun openWorkout(id: Int) {
+        navHostController.navigate("${WORKOUT_INFO_SCREEN}/$id")
     }
 
     fun openExercise(id: Int) {

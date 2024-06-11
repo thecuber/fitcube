@@ -13,17 +13,19 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: RoomRepository
-): ViewModel() {
+) : ViewModel() {
     fun getWorkouts(): Flow<List<HomeWorkout>> {
         return repository.getWorkouts()
     }
+
     fun addWorkout(name: String) {
         viewModelScope.launch {
             repository.addWorkout(
                 Workout(
-                0,
-                name
-            )
+                    0,
+                    name,
+                    false
+                )
             )
         }
     }

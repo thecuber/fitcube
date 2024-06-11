@@ -24,7 +24,32 @@ import fr.cuber.fitcube.R
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 
 @Composable
-fun ExerciseIcon(id: Int, modifier: Modifier = Modifier, darken: Boolean = false) {
+fun ExerciseIcon(img: String, modifier: Modifier = Modifier) {
+    var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
+    val context = LocalContext.current
+
+    LaunchedEffect(img) {
+        try {
+            bitmapState =
+                BitmapFactory.decodeStream(context.assets.open("images/$img"))
+        } catch (_: Exception) {//If image is not found, or run during preview
+        }
+    }
+    if (null != bitmapState) {
+        val bitmap = bitmapState!!.asImageBitmap()
+        Image(
+            bitmap = bitmap,
+            "assetsImage",
+            modifier = modifier,
+            colorFilter = null
+        )
+    } else {
+        DefaultIconParser(modifier)
+    }
+}
+
+@Composable
+fun ExerciseIcon(id: List<String>, modifier: Modifier = Modifier) {
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
 
@@ -44,7 +69,7 @@ fun ExerciseIcon(id: Int, modifier: Modifier = Modifier, darken: Boolean = false
             colorFilter = null
         )
     } else {
-        DefaultIconParser(modifier, darken)
+        DefaultIconParser(modifier)
     }
 }
 

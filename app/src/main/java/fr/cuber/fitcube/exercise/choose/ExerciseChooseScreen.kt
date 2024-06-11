@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.defaultExerciseType
+import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.FitCubeAppBarWithBack
@@ -113,7 +114,7 @@ fun ExerciseChooseItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(vertical = 10.dp)
     ) {
-        ExerciseIcon(exercise.id)
+        ExerciseIcon(exercise.imagePreview())
         Column(modifier = Modifier.padding(horizontal = 10.dp)) {
             Text(exercise.name, fontWeight = FontWeight.Bold)
             Text(fontStyle = FontStyle.Italic, text = exercise.description)

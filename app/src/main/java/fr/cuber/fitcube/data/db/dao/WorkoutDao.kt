@@ -14,7 +14,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface WorkoutDao {
 
-    @Query("SELECT workouts.* FROM workouts LEFT JOIN sessions ON workouts.id = sessions.workoutId AND sessions.date = (SELECT MAX(DATE) FROM SESSIONS AS S WHERE S.workoutId = workouts.id)")
+    @Transaction
+    @Query("SELECT workouts.*, AVG(sessions.duration) as estimated, MAX(sessions.date) as date, COUNT(workout_exercises.id) as exerciseCount FROM workouts " +
+            "LEFT JOIN sessions ON sessions.workoutId = workouts.id " +
+            "LEFT JOIN workout_exercises ON workout_exercises.workoutId = workouts.id " +
+            "GROUP BY workouts.id")
     fun getAllWorkouts(): Flow<List<HomeWorkout>>
 
     @Insert
@@ -27,14 +31,19 @@ interface WorkoutDao {
 }
 
 
+
 data class HomeWorkout(
     @Embedded val workout: Workout,
-    val date: Long?
+    val date: Long?,
+    val estimated: Long,
+    val exerciseCount: Int,
 )
 
 fun defaultHomeWorkout(id: Int) = HomeWorkout(
     workout = defaultWorkout(id),
-    date = System.currentTimeMillis()
+    date = System.currentTimeMillis(),
+    estimated = 1000 * (83),
+    exerciseCount = 3
 )
 
 data class WorkoutWithExercises(

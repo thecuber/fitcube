@@ -3,7 +3,6 @@ package fr.cuber.fitcube.data.db
 import fr.cuber.fitcube.data.db.dao.ExerciseDao
 import fr.cuber.fitcube.data.db.dao.SessionDao
 import fr.cuber.fitcube.data.db.dao.WorkoutDao
-import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.Session
 import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
@@ -16,9 +15,6 @@ class RoomRepository @Inject constructor(
 
 ){
     fun getExerciseTypes() = exerciseDao.getAllExerciseTypes()
-    suspend fun insertExerciseType(name: String, description: String) = exerciseDao.insertExerciseType(
-        ExerciseType(0, name, description, true, "")
-    )
 
     fun getWorkouts() = workoutDao.getAllWorkouts()
 

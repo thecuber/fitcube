@@ -43,13 +43,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
-import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
+import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
 import fr.cuber.fitcube.data.db.entity.Session
 import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.defaultSession
 import fr.cuber.fitcube.data.db.entity.defaultWorkout
+import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.parseDuration
@@ -68,9 +69,7 @@ fun WorkoutInfoScreen(
     viewModel: WorkoutInfoViewModel = hiltViewModel()
 ) {
     val workoutExercises by viewModel.getWorkout(workoutId).collectAsState(
-        initial = WorkoutWithExercises(
-            Workout(0, ""), emptyList()
-        )
+        initial = defaultWorkoutWithExercises(5)
     )
     val sessions by viewModel.getSessions(workoutId).collectAsState(initial = emptyList())
     WorkoutInfoScaffold(
@@ -245,7 +244,7 @@ fun WorkoutInfoExerciseItem(
             )
         }
         ExerciseIcon(
-            exercise.type.id,
+            exercise.type.imagePreview(),
             Modifier
                 .fillMaxWidth(0.3f)
                 .aspectRatio(1f)

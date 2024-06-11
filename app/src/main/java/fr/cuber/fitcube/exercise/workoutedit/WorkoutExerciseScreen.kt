@@ -35,6 +35,7 @@ import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
+import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.DividerSpaced
 import fr.cuber.fitcube.utils.ExerciseIcon
@@ -140,7 +141,7 @@ fun WorkoutExerciseContent(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            ExerciseIcon(exercise.type.id, Modifier)
+            ExerciseIcon(exercise.type.imagePreview(), Modifier)
             Spacer(modifier = Modifier.padding(5.dp))
             Text(text = exercise.type.description, fontStyle = FontStyle.Italic)
             ExerciseModeSelect(mode = exercise.exercise.mode) {

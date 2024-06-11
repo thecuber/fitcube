@@ -31,6 +31,7 @@ import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 
+
 @Composable
 fun PredictionField(
     modifier: Modifier = Modifier,
@@ -72,11 +73,7 @@ fun PredictionField(
             Button(
                 onClick = { validPrediction(parsePrediction(text))},
                 enabled = validParsing, modifier = Modifier.padding(start = 10.dp, top = 5.dp),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = Color.White
-                )
+                shape = RoundedCornerShape(50)
             ) {
                 Icon(imageVector = Icons.Filled.Done, contentDescription = "")
             }
@@ -87,7 +84,7 @@ fun PredictionField(
 @Preview
 @Composable
 fun PredictionFieldPreview() {
-    FitCubeTheme(false) {
+    FitCubeTheme {
         Surface {
             Card(
                 modifier = Modifier

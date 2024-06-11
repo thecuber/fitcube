@@ -40,6 +40,12 @@ class Converters {
     @TypeConverter
     fun mapListToInt(value: String) = Json.decodeFromString<Map<Int, List<Double>>>(value)
 
+    @TypeConverter
+    fun fromStringList(value : List<String>) = Json.encodeToString(value)
+
+    @TypeConverter
+    fun toStringList(value: String) = Json.decodeFromString<List<String>>(value)
+
 
 
 }

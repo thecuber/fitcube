@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Done
@@ -22,6 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -48,15 +49,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.OutlinedButton
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
-import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
-import fr.cuber.fitcube.data.db.entity.Workout
+import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
+import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.PredictionField
@@ -75,9 +75,7 @@ fun WorkoutSessionScreen(
     val context = LocalContext.current
     val state by viewModel.getState().collectAsState()
     val workout by viewModel.getWorkout(workoutId).collectAsState(
-        initial = WorkoutWithExercises(
-            Workout(0, ""), emptyList()
-        )
+        initial = defaultWorkoutWithExercises(5)
     )
     LaunchedEffect(Unit) {
         Intent(context, WorkoutSessionNotificationService::class.java).also { intent ->
@@ -140,7 +138,7 @@ fun WorkoutSessionScaffold(
 @Preview
 @Composable
 fun WorkoutSessionContentPreview() {
-    FitCubeTheme(false) {
+    FitCubeTheme {
         Surface {
             WorkoutSessionScaffold(
                 state = defaultSessionUiState(10).copy(
@@ -181,7 +179,7 @@ fun WorkoutSessionContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             ExerciseIcon(
-                id = state.workout.exercises[state.currentExercise].type.id,
+                img = state.workout.exercises[state.currentExercise].type.imagePreview(),
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
                     .aspectRatio(1f)
@@ -242,7 +240,7 @@ fun WorkoutSessionWeights(
             .animateContentSize()
             .padding(10.dp)
             .clickable { setExpanded() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Column(
             modifier = Modifier
@@ -264,14 +262,14 @@ fun WorkoutSessionWeights(
                 val prediction = exercise.exercise.prediction
                 if (currentSet > 0) Text(
                     "${prediction[currentSet - 1]}lbs",
-                    fontWeight = FontWeight(100)
+                    fontWeight = FontWeight(200)
                 )
                 Spacer(modifier = Modifier.padding(5.dp))
                 Text("${prediction[currentSet]}lbs", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.padding(5.dp))
                 if (currentSet + 1 < prediction.size) Text(
                     "${prediction[currentSet + 1]}lbs",
-                    fontWeight = FontWeight(100)
+                    fontWeight = FontWeight(200)
                 )
             }
             if (expanded == Expanded.WEIGHTS) {
@@ -329,14 +327,9 @@ fun WorkoutSessionActions(
                 modifier = Modifier.padding(horizontal = 10.dp)
             )
             Spacer(modifier = Modifier.weight(1f))
-            Button(
+            FilledIconButton(
                 onClick = onPauseAction,
-                modifier = Modifier.padding(horizontal = 10.dp),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                )
+                modifier = Modifier.size(55.dp)
             ) {
                 if (timer > 0) {
                     if (paused) {
@@ -344,8 +337,7 @@ fun WorkoutSessionActions(
                     } else {
                         Icon(
                             painter = painterResource(id = R.drawable.baseline_pause_24),
-                            contentDescription = ""
-                        )
+                            contentDescription = "")
                     }
                 } else {
                     Icon(imageVector = Icons.Rounded.Done, contentDescription = "")
@@ -433,7 +425,7 @@ fun WorkoutSessionNextExercise(
                             )
                         }
                         ExerciseIcon(
-                            id = exercise.type.id, modifier = Modifier
+                            img = exercise.type.imagePreview(), modifier = Modifier
                                 .fillMaxWidth(0.25f)
                                 .aspectRatio(1f)
                         )
@@ -460,7 +452,7 @@ fun WorkoutSessionNextExercise(
                     )
                 }
                 ExerciseIcon(
-                    id = ex.type.id, modifier = Modifier
+                    img = ex.type.imagePreview(), modifier = Modifier
                         .fillMaxWidth(0.25f)
                         .aspectRatio(1f)
                 )
@@ -473,7 +465,7 @@ fun WorkoutSessionNextExercise(
 @Preview
 @Composable
 fun WorkoutSessionNextExercisePreview() {
-    FitCubeTheme(false) {
+    FitCubeTheme {
         Surface {
             WorkoutSessionNextExercise(
                 modifier = Modifier.padding(10.dp),
