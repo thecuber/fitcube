@@ -27,11 +27,11 @@ import fr.cuber.fitcube.ui.theme.FitCubeTheme
 fun ExerciseIcon(img: String, modifier: Modifier = Modifier) {
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
-
     LaunchedEffect(img) {
         try {
+            //TODO img loaded start with png/, so consider other cases
             bitmapState =
-                BitmapFactory.decodeStream(context.assets.open("images/$img"))
+                BitmapFactory.decodeStream(context.assets.open("images/${img.substring(4)}"))
         } catch (_: Exception) {//If image is not found, or run during preview
         }
     }
@@ -41,32 +41,7 @@ fun ExerciseIcon(img: String, modifier: Modifier = Modifier) {
             bitmap = bitmap,
             "assetsImage",
             modifier = modifier,
-            colorFilter = null
-        )
-    } else {
-        DefaultIconParser(modifier)
-    }
-}
-
-@Composable
-fun ExerciseIcon(id: List<String>, modifier: Modifier = Modifier) {
-    var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
-    val context = LocalContext.current
-
-    LaunchedEffect(id) {
-        try {
-            bitmapState =
-                BitmapFactory.decodeStream(context.assets.open("images/${id}.jpg"))
-        } catch (_: Exception) {//If image is not found, or run during preview
-        }
-    }
-    if (null != bitmapState) {
-        val bitmap = bitmapState!!.asImageBitmap()
-        Image(
-            bitmap = bitmap,
-            "assetsImage",
-            modifier = modifier,
-            colorFilter = null
+            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.surface, BlendMode.Darken)
         )
     } else {
         DefaultIconParser(modifier)
@@ -86,11 +61,7 @@ private fun DefaultIconParser(modifier: Modifier = Modifier, darken: Boolean = f
             id = R.string.no_image
         ),
         modifier = modifier,
-        colorFilter = if (darken) {
-            ColorFilter.tint(color = MaterialTheme.colorScheme.secondary, BlendMode.Darken)
-        } else {
-            null
-        }
+        colorFilter = ColorFilter.tint(color = MaterialTheme.colorScheme.surface, BlendMode.Darken)
     )
 }
 

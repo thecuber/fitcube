@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -37,7 +38,6 @@ import fr.cuber.fitcube.data.db.dao.defaultFullExercise
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
-import fr.cuber.fitcube.utils.DividerSpaced
 import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.WorkoutExerciseAppBar
 import fr.cuber.fitcube.utils.parsePrediction
@@ -147,7 +147,7 @@ fun WorkoutExerciseContent(
             ExerciseModeSelect(mode = exercise.exercise.mode) {
                 setExercise(exercise.copy(exercise = exercise.exercise.copy(mode = it)))
             }
-            DividerSpaced(pad = 5.dp)
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 5.dp))
             Text(text = "Prediction for current session:")
             Text(
                 showPrediction(

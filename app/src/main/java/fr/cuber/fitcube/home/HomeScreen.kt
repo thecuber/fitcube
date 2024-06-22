@@ -228,7 +228,7 @@ fun HomeWorkoutCard(
                 Text(name, fontWeight = FontWeight(700), fontSize = 20.sp)
                 Text(
                     text = if (date != null) {
-                        val t = ((Date().time - date) / (3600 * 24)).toInt()
+                        val t = ((Date().time - date) / (3600 * 24 * 1000)).toInt()
                         pluralStringResource(id = R.plurals.last_workout_session, t, t)
                     } else stringResource(id = R.string.no_workout_session),
                     fontStyle = FontStyle.Italic
@@ -330,6 +330,7 @@ fun HomeWorkoutDetails(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
+                //FIXME exerciseCount wrong
                 Text(
                     text = "Exercises: ${workout.exerciseCount}",
                     fontSize = 16.sp

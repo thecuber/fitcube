@@ -14,15 +14,18 @@ class ExerciseChooseViewModel @Inject constructor(
 ): ViewModel() {
 
     fun getExercises() = repository.getExerciseTypes()
-    suspend fun createWorkoutExercise(ex: ExerciseType, workout: Int) = repository.createWorkoutExercise(
-        WorkoutExercise(
-        0,
-        ex.id,
-        workout,
-        WorkoutMode.REPETITION,
-        emptyList()
-    )
-    )
+    suspend fun createWorkoutExercise(ex: ExerciseType, workout: Int): Long {
+        repository.updateWorkoutStatus(workout, false)
+        return repository.createWorkoutExercise(
+            WorkoutExercise(
+                0,
+                ex.id,
+                workout,
+                WorkoutMode.REPETITION,
+                emptyList()
+            )
+        )
+    }
 
 
 }

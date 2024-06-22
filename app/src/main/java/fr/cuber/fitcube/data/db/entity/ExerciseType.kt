@@ -8,7 +8,6 @@ data class ExerciseType(
     @PrimaryKey(autoGenerate = true) val id: Int,
     val name: String,
     val description: String,
-    val static: Boolean,
     val image: List<String>
 )
 
@@ -16,7 +15,6 @@ fun defaultExerciseType(id: Int) = ExerciseType(
     id = id,
     name = "Exercise $id",
     description = "Description for exercise $id",
-    static = true,
     image = listOf()
 )
 

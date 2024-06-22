@@ -12,11 +12,13 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Binder
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.text.Html
 import android.widget.RemoteViews
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -50,6 +52,9 @@ class WorkoutSessionNotificationService : Service() {
     private lateinit var smallLayout: RemoteViews
     private lateinit var bigLayout: RemoteViews
 
+    private val mainHandler = Handler(Looper.getMainLooper()) //Handler for timer, used for disconnecting at the end
+
+
     inner class LocalBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods.
         fun getService(): WorkoutSessionNotificationService = this@WorkoutSessionNotificationService
@@ -58,10 +63,20 @@ class WorkoutSessionNotificationService : Service() {
     init {
         CoroutineScope(Dispatchers.Main).launch {
             session.listenState().collect { newState ->
-                if (newState.status != SessionStatus.WAITING && newState.workout.workout.id != 0)
+                if (newState.status != SessionStatus.START && newState.workout.workout.id != 0)
                     updateNotification(newState)
             }
         }
+        timer()
+    }
+
+    private fun timer() {
+        mainHandler.post(object : Runnable {
+            override fun run() {
+                session.timerTick()
+                mainHandler.postDelayed(this, 1000)
+            }
+        })
     }
 
     override fun onCreate() {
@@ -75,10 +90,9 @@ class WorkoutSessionNotificationService : Service() {
             val intent = PendingIntent.getBroadcast(
                 applicationContext,
                 0,
-                Intent(
-                    applicationContext,
-                    NotificationBroadcastReceiver::class.java
-                ).also { it.action = "REST" },
+                Intent().apply {
+                   putExtra("", "") //TODO
+                },
                 PendingIntent.FLAG_IMMUTABLE
             )
             bigLayout.setOnClickPendingIntent(R.id.notification_button_next, intent)
@@ -93,7 +107,7 @@ class WorkoutSessionNotificationService : Service() {
         bigLayout.setTextViewText(
             R.id.notification_title,
             when (state.status) {
-                SessionStatus.WAITING -> {
+                SessionStatus.START -> {
                     "Waiting for workout to start..."
                 }
 
@@ -140,7 +154,7 @@ class WorkoutSessionNotificationService : Service() {
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(smallLayout)
             .setCustomBigContentView(bigLayout)
-            .setUsesChronometer(state.status != SessionStatus.WAITING)
+            .setUsesChronometer(state.status != SessionStatus.START)
             .setWhen(state.started)
             .setContentText("Workout text")
             .setContentTitle("Workout session")
@@ -175,29 +189,15 @@ class WorkoutSessionNotificationService : Service() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        println("IM UNBINDING")
-        Intent().also {
-            it.action = "STOP"
-            sendBroadcast(it)
-        }
+        mainHandler.removeCallbacksAndMessages(null)
         stopSelf()
         return super.onUnbind(intent)
-    }
-
-    fun startRest() {
-        Intent(
-            applicationContext,
-            NotificationBroadcastReceiver::class.java
-        ).also {
-            it.action = "REST"
-            sendBroadcast(it)
-        }
     }
 
 }
 
 enum class SessionStatus {
-    WAITING,
+    START,
     REST,
     EXERCISE,
     TIMING,
@@ -212,47 +212,35 @@ data class SessionUiState(
     val workout: WorkoutWithExercises,
     val started: Long,
     val predictions: List<List<Double>>,
-    val elapsedTime: Long
+    val elapsedTime: Long,
+    val paused: Boolean,
+    val bufferTimer: Boolean,
+    val rest: Int
 )
 
 fun defaultSessionUiState(size: Int) = SessionUiState(
-    status = SessionStatus.WAITING,
+    status = SessionStatus.START,
     0,
     0,
-    0,
+    10,
     defaultWorkoutWithExercises(size),
     0L,
     List(size) { List(4) { 10.0 } },
-    0L
+    0L,
+    true,
+    bufferTimer = false,
+    if(Build.FINGERPRINT.contains("generic")) { 5 } else { 120 }
 )
 
-
-@AndroidEntryPoint
 class NotificationBroadcastReceiver : BroadcastReceiver() {
-
-    @Inject
-    lateinit var session: SessionState
-
-    private val mainHandler = Handler(Looper.getMainLooper())
     override fun onReceive(context: Context?, intent: Intent?) {
-        when (intent?.action) {
-            "REST" -> startRest()
-            "STOP" -> stopTimer()
+        val message = intent?.getStringExtra("MESSAGE")
+        if (message != null) {
+            Toast.makeText(
+                context,
+                message,
+                Toast.LENGTH_LONG
+            ).show()
         }
-    }
-
-    private fun stopTimer() {
-        mainHandler.removeCallbacksAndMessages(null)
-    }
-
-    private fun startRest() {
-        val timer = 10
-        session.startRest(timer)
-        mainHandler.post(object : Runnable {
-            override fun run() {
-                if (session.timerTick())
-                    mainHandler.postDelayed(this, 1000)
-            }
-        })
     }
 }

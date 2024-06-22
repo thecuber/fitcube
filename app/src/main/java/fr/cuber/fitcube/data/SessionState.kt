@@ -16,16 +16,19 @@ interface SessionState {
     fun getValue(): SessionUiState
     fun bindWorkout(workout: WorkoutWithExercises)
 
-    fun startRest(timer: Int)
+    fun timerTick()
 
-    fun timerTick(): Boolean
-
-    fun postRest()
+    /**
+     * Calls the rest and update it
+     */
+    fun restUpdate()
 
     fun onEnd(): MutableStateFlow<Boolean>
     fun setNextPrediction(prediction: List<Double>, index: Int)
 
     fun setCurrentPrediction(prediction: List<Double>, index: Int)
+    fun pauseAction()
+    fun setRest(it: Int)
 
 }
 
@@ -53,20 +56,25 @@ class SessionStateImpl @Inject constructor() : SessionState {
             predictions = workout.exercises.map { it.exercise.prediction })
     }
 
-    override fun startRest(timer: Int) {
-        _uiState.value = _uiState.value.copy(status = SessionStatus.REST, timer = timer)
-    }
-
-    override fun timerTick(): Boolean {
+    override fun timerTick() {
+        _uiState.value = _uiState.value.copy(elapsedTime = _uiState.value.elapsedTime + 1000)
+        if (_uiState.value.paused || _uiState.value.status == SessionStatus.EXERCISE) return
+        if(_uiState.value.bufferTimer) {
+            _uiState.value = _uiState.value.copy(bufferTimer = false)
+            return
+        }
         _uiState.value = _uiState.value.copy(timer = _uiState.value.timer - 1)
         if (_uiState.value.timer == 0) {
-            postRest()
-            return false
+            if (_uiState.value.status == SessionStatus.START) {
+                _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE, started = System.currentTimeMillis(), elapsedTime = 0)
+            } else {
+                _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
+            }
         }
-        return true
     }
 
-    override fun postRest() {
+
+    override fun restUpdate() {
         var set = getValue().currentSet + 1
         var ex = getValue().currentExercise
         if (set == getValue().workout.exercises[getValue().currentExercise].exercise.prediction.size) {
@@ -78,7 +86,10 @@ class SessionStateImpl @Inject constructor() : SessionState {
                 return
             }
         }
-        _uiState.value = _uiState.value.copy(currentExercise = ex, currentSet = set, status = SessionStatus.EXERCISE)
+        _uiState.value = _uiState.value.copy(
+            currentExercise = ex,
+            currentSet = set
+        )
     }
 
     override fun onEnd() = endTrigger
@@ -97,6 +108,20 @@ class SessionStateImpl @Inject constructor() : SessionState {
                     fullExercise
                 }
             }))
+    }
+
+    override fun pauseAction() {
+        if (_uiState.value.status == SessionStatus.EXERCISE) {
+            //This can be a rest
+            _uiState.value = _uiState.value.copy(timer = _uiState.value.rest, status = SessionStatus.REST, bufferTimer = true)
+            restUpdate()
+        } else {
+            _uiState.value = _uiState.value.copy(paused = _uiState.value.paused.not())
+        }
+    }
+
+    override fun setRest(it: Int) {
+        _uiState.value = _uiState.value.copy(rest = it)
     }
 
 }

@@ -26,6 +26,8 @@ class WorkoutSessionViewModel @Inject constructor(
     @SuppressLint("StaticFieldLeak")
     private lateinit var notificationService: WorkoutSessionNotificationService
     private var bounded: Boolean = false
+
+    @SuppressLint("StaticFieldLeak")
     private lateinit var context: Context
 
     private val connection = object : ServiceConnection {
@@ -40,6 +42,8 @@ class WorkoutSessionViewModel @Inject constructor(
             bounded = false
         }
     }
+
+    fun pauseAction() = sessionState.pauseAction()
 
 
     init {
@@ -65,9 +69,6 @@ class WorkoutSessionViewModel @Inject constructor(
 
     fun getWorkout(workoutId: Int) = dbRepository.getWorkout(workoutId)
     fun bindWorkout(workout: WorkoutWithExercises) = sessionState.bindWorkout(workout)
-    fun start() {
-        sessionState.start()
-    }
 
     private suspend fun finishSession(state: SessionUiState) {
         val m = HashMap<Int, List<Double>>()
@@ -84,8 +85,9 @@ class WorkoutSessionViewModel @Inject constructor(
         dbRepository.createSession(session)
     }
 
-    fun nextState() {
-        notificationService.startRest()
+    fun setRest(it: Int) {
+        sessionState.setRest(it)
     }
+
 
 }

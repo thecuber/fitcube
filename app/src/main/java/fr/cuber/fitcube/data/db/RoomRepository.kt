@@ -35,4 +35,6 @@ class RoomRepository @Inject constructor(
 
     suspend fun createSession(session: Session) = sessionDao.createSession(session)
 
+    suspend fun updateWorkoutStatus(id: Int, status: Boolean) = workoutDao.updateStatus(id, status)
+
 }

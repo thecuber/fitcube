@@ -50,3 +50,4 @@ fun parseDuration(timer: Long): String {
     val hours = (t / 3600).toString().padStart(2, '0')
     return "${hours}h ${minutes}m ${seconds}s"
 }
+

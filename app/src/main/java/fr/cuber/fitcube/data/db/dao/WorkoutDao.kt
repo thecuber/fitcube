@@ -28,6 +28,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE workouts.id = :workoutId")
     fun getWorkout(workoutId: Int): Flow<WorkoutWithExercises>
 
+    @Query("UPDATE workouts SET status = :status WHERE id = :id")
+    suspend fun updateStatus(id: Int, status: Boolean)
+
 }
 
 

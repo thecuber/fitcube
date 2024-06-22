@@ -2,6 +2,9 @@ package fr.cuber.fitcube.workout.session
 
 import android.content.Intent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,17 +17,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +52,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,7 +79,6 @@ import fr.cuber.fitcube.utils.showPrediction
 fun WorkoutSessionScreen(
     workoutId: Int,
     back: () -> Unit,
-    modifier: Modifier = Modifier,
     viewModel: WorkoutSessionViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -85,7 +94,14 @@ fun WorkoutSessionScreen(
     LaunchedEffect(workout) {
         viewModel.bindWorkout(workout)
     }
-
+    WorkoutSessionScaffold(
+        state = state,
+        onPauseAction = { viewModel.pauseAction() },
+        closeSession = back,
+        onRestChange = { viewModel.setRest(it) },
+        onCurrentWeightChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
+        onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,8 +109,11 @@ fun WorkoutSessionScreen(
 fun WorkoutSessionScaffold(
     modifier: Modifier = Modifier,
     state: SessionUiState,
-    paused: Boolean,
-    onPauseAction: () -> Unit
+    onPauseAction: () -> Unit,
+    closeSession: () -> Unit,
+    onRestChange: (Int) -> Unit,
+    onCurrentWeightChange: (List<Double>, Int) -> Unit,
+    onNextWeightChange: (List<Double>, Int) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -102,7 +121,7 @@ fun WorkoutSessionScaffold(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = {
                     Text(
-                        state.workout.exercises[state.currentExercise].type.name,
+                        state.workout.exercises.getOrNull(state.currentExercise)?.type?.name ?: "",
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight(700)
                     )
@@ -110,7 +129,7 @@ fun WorkoutSessionScaffold(
                 modifier = Modifier.fillMaxWidth(),
                 actions = {
                     OutlinedButton(
-                        onClick = onPauseAction,
+                        onClick = closeSession,
                         modifier = Modifier.padding(horizontal = 10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary,
@@ -129,8 +148,10 @@ fun WorkoutSessionScaffold(
         WorkoutSessionContent(
             modifier = modifier.padding(it),
             state = state,
-            paused = paused,
-            onPauseAction = onPauseAction
+            onPauseAction = onPauseAction,
+            onRestChange = onRestChange,
+            onCurrentWeightChange = onCurrentWeightChange,
+            onNextWeightChange = onNextWeightChange
         )
     }
 }
@@ -146,8 +167,11 @@ fun WorkoutSessionContentPreview() {
                     timer = 83,
                     elapsedTime = 1000 * (3600L + 23 * 60L + 45L)
                 ),
-                paused = false,
-                onPauseAction = {}
+                onPauseAction = {},
+                closeSession = {},
+                onRestChange = {},
+                onCurrentWeightChange = { a, b -> a + b },
+                onNextWeightChange = { a, b -> a + b }
             )
         }
     }
@@ -157,18 +181,31 @@ fun WorkoutSessionContentPreview() {
 enum class Expanded {
     DEFAULT,
     WEIGHTS,
-    EXERCISES
+    EXERCISES,
+    TIMER
 }
 
 @Composable
 fun WorkoutSessionContent(
     modifier: Modifier = Modifier,
     state: SessionUiState,
-    paused: Boolean,
-    onPauseAction: () -> Unit
+    onPauseAction: () -> Unit,
+    onRestChange: (Int) -> Unit,
+    onCurrentWeightChange: (List<Double>, Int) -> Unit,
+    onNextWeightChange: (List<Double>, Int) -> Unit
 ) {
-    val progress = 0.5f
     val exerciseCount = state.workout.exercises.size
+    val progress = if (exerciseCount > 0) {
+        state.workout.exercises.mapIndexed { index, it ->
+            if (index < state.currentExercise) it.exercise.prediction.size
+            else if (index == state.currentExercise) state.currentSet
+            else 0
+        }.sum().toFloat() / state.workout.exercises.sumOf {
+            it.exercise.prediction.size
+        }.toFloat()
+    } else {
+        0f
+    }
     var expanded by remember { mutableStateOf(Expanded.DEFAULT) }
     Column(modifier.fillMaxWidth()) {
         Row(
@@ -179,14 +216,22 @@ fun WorkoutSessionContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             ExerciseIcon(
-                img = state.workout.exercises[state.currentExercise].type.imagePreview(),
+                img = state.workout.exercises.getOrNull(state.currentExercise)?.type?.imagePreview()
+                    ?: "",
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
                     .aspectRatio(1f)
             )
         }
+        var exerciseIndex by remember {
+            mutableIntStateOf(state.currentExercise)
+        }
+        LaunchedEffect(key1 = state.currentExercise) {
+            exerciseIndex = state.currentExercise
+        }
         WorkoutSessionWeights(
-            exercise = state.workout.exercises[state.currentExercise],
+            exercise = state.workout.exercises.getOrNull(state.currentExercise)
+                ?: defaultFullExercise(0),
             currentSet = state.currentSet,
             expanded = expanded,
             setExpanded = {
@@ -195,16 +240,30 @@ fun WorkoutSessionContent(
                 } else {
                     Expanded.WEIGHTS
                 }
-            }
+            },
+            onCurrentWeightChange = { onCurrentWeightChange(it, exerciseIndex) },
+            onNextWeightChange = { onNextWeightChange(it, exerciseIndex) }
         )
         WorkoutSessionActions(
             onPauseAction = onPauseAction,
-            paused = paused,
+            expanded = expanded,
+            paused = state.paused,
             timer = state.timer,
             currentSet = state.currentSet,
-            totalSets = state.workout.exercises[state.currentExercise].exercise.prediction.size,
+            totalSets = state.workout.exercises.getOrNull(state.currentExercise)?.exercise?.prediction?.size
+                ?: 0,
             progress = progress,
-            elapsedTime = state.elapsedTime
+            elapsedTime = state.elapsedTime,
+            started = state.status != SessionStatus.START,
+            rest = state.rest,
+            setRest = onRestChange,
+            setExpanded = {
+                expanded = if (expanded == Expanded.TIMER) {
+                    Expanded.DEFAULT
+                } else {
+                    Expanded.TIMER
+                }
+            },
         )
         if (state.currentExercise < exerciseCount - 1) {
             WorkoutSessionNextExercise(
@@ -232,8 +291,12 @@ fun WorkoutSessionWeights(
     modifier: Modifier = Modifier,
     currentSet: Int,
     expanded: Expanded,
-    setExpanded: () -> Unit
+    setExpanded: () -> Unit,
+    onCurrentWeightChange: (List<Double>) -> Unit,
+    onNextWeightChange: (List<Double>) -> Unit
 ) {
+    //TODO animation for text slide
+    //TODO Carousel to update all exercises
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -275,11 +338,13 @@ fun WorkoutSessionWeights(
             if (expanded == Expanded.WEIGHTS) {
                 Text("Current session weights")
                 PredictionField(
-                    validPrediction = {})
+                    validPrediction = onCurrentWeightChange
+                )
                 Spacer(modifier = Modifier.padding(5.dp))
                 Text("Next session weights")
                 PredictionField(
-                    validPrediction = {})
+                    validPrediction = onNextWeightChange
+                )
                 Spacer(modifier = Modifier.padding(10.dp))
             }
         }
@@ -295,7 +360,9 @@ fun WorkoutSessionWeightsPreview() {
                 defaultFullExercise(0),
                 currentSet = 0,
                 expanded = Expanded.WEIGHTS,
-                setExpanded = {})
+                setExpanded = {},
+                onCurrentWeightChange = {},
+                onNextWeightChange = {})
         }
     }
 }
@@ -308,13 +375,23 @@ fun WorkoutSessionActions(
     onPauseAction: () -> Unit,
     paused: Boolean,
     timer: Int,
+    expanded: Expanded,
+    started: Boolean,
     currentSet: Int,
+    rest: Int,
+    setRest: (Int) -> Unit,
     totalSets: Int,
     progress: Float,
     elapsedTime: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    setExpanded: () -> Unit
 ) {
-    Column(modifier = modifier) {
+    //TODO Change depending on the status for an end action
+    val progressAnimation by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing), label = "",
+    )
+    Column(modifier = modifier.clickable { setExpanded() }) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = if (timer > 0) {
@@ -337,7 +414,8 @@ fun WorkoutSessionActions(
                     } else {
                         Icon(
                             painter = painterResource(id = R.drawable.baseline_pause_24),
-                            contentDescription = "")
+                            contentDescription = ""
+                        )
                     }
                 } else {
                     Icon(imageVector = Icons.Rounded.Done, contentDescription = "")
@@ -345,17 +423,37 @@ fun WorkoutSessionActions(
             }
             Spacer(modifier = Modifier.padding(end = 10.dp))
         }
-        Text(
-            text = "Elapsed time: ${parseDuration(elapsedTime)}",
-            fontStyle = FontStyle.Italic,
-            modifier = Modifier.padding(horizontal = 10.dp)
-        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = if (started) {
+                    "Elapsed time: ${parseDuration(elapsedTime)}"
+                } else {
+                    "Starting in..."
+                },
+                fontStyle = FontStyle.Italic,
+                modifier = Modifier.padding(horizontal = 10.dp)
+            )
+            if (expanded == Expanded.TIMER) {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(0.5f),
+                    textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.End),
+                    value = rest.toString(),
+                    maxLines = 1,
+                    onValueChange = {
+                        setRest(it.toIntOrNull() ?: 0)
+                    },
+                    suffix = { Text("s") },
+                    label = { Text("Rest time") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+                )
+            }
+        }
         LinearProgressIndicator(
-            progress = progress,
+            progress = { progressAnimation },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 5.dp),
-            strokeCap = StrokeCap.Round
+            strokeCap = StrokeCap.Round,
         )
     }
 }
@@ -373,7 +471,12 @@ fun WorkoutSessionActionsPreview() {
                 modifier = Modifier.padding(10.dp),
                 currentSet = 1,
                 totalSets = 4,
-                elapsedTime = 3600L + 23 * 60L + 45L
+                elapsedTime = 3600L + 23 * 60L + 45L,
+                started = false,
+                expanded = Expanded.TIMER,
+                rest = 30,
+                setRest = {},
+                setExpanded = {}
             )
         }
     }
@@ -389,6 +492,7 @@ fun WorkoutSessionNextExercise(
     exercises: List<FullExercise>,
     onSwap: (Int, Int) -> Unit
 ) {
+    //TODO Add swap mechanic
     var mod = modifier
         .padding(10.dp)
         .fillMaxWidth()
@@ -407,7 +511,7 @@ fun WorkoutSessionNextExercise(
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
-            Divider()
+            HorizontalDivider()
             LazyColumn {
                 itemsIndexed(exercises.subList(exerciseIndex, exerciseCount)) { id, exercise ->
                     Row(
@@ -430,7 +534,7 @@ fun WorkoutSessionNextExercise(
                                 .aspectRatio(1f)
                         )
                     }
-                    Divider()
+                    HorizontalDivider()
                 }
             }
         } else {

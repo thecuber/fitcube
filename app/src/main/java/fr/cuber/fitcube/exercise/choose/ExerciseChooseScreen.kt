@@ -112,9 +112,9 @@ fun ExerciseChooseItem(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.padding(vertical = 10.dp)
+        modifier = modifier.padding(vertical = 10.dp).fillMaxWidth()
     ) {
-        ExerciseIcon(exercise.imagePreview())
+        ExerciseIcon(exercise.imagePreview(), modifier = Modifier.fillMaxWidth(0.2f))
         Column(modifier = Modifier.padding(horizontal = 10.dp)) {
             Text(exercise.name, fontWeight = FontWeight.Bold)
             Text(fontStyle = FontStyle.Italic, text = exercise.description)

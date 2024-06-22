@@ -15,6 +15,9 @@ class WorkoutExerciseViewModel @Inject constructor(
 ): ViewModel() {
 
     fun saveWorkoutExercise(ex: WorkoutExercise) = viewModelScope.launch {
+        if(ex.prediction.isNotEmpty()) {
+            repository.updateWorkoutStatus(ex.workoutId, true)
+        }
         repository.saveWorkoutExercise(ex)
     }
 
