@@ -49,7 +49,7 @@ fun ExerciseIcon(img: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DefaultIconParser(modifier: Modifier = Modifier, darken: Boolean = false) {
+private fun DefaultIconParser(modifier: Modifier = Modifier) {
     Image(
         painterResource(
             id = if (LocalInspectionMode.current) {
