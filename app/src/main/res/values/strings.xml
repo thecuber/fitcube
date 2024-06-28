@@ -13,6 +13,7 @@
     <string name="notification_button_next">Rest</string>
     <string name="notification_button_change">Skip</string>
     <string name="notification_button_prediction">Predictions</string>
+    <string name="image">Image</string>
     <plurals name="last_workout_session">
         <item quantity="one">Last session :1 day ago</item>
         <item quantity="other">Last session : %d days ago</item>

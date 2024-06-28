@@ -2,92 +2,68 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="100dp"
-    android:orientation="vertical">
+    android:id="@+id/notif_layout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@color/md_theme_surface"
+    android:orientation="horizontal"
+    tools:layout_height="64dp"
+    tools:layout_width="match_parent">
+
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="vertical">
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/notification_title"
+            style="@style/TextAppearance.Compat.Notification.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:fontFamily="@font/kanit_medium"
+            android:text="@string/notification_title_big" />
 
-            <TextView
-                android:id="@+id/notification_title"
-                style="@style/TextAppearance.Compat.Notification.Title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/notification_title_big" />
-
-            <TextView
-                android:id="@+id/notification_body_set"
-                style="@style/TextAppearance.Compat.Notification.Info"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/notification_body_1_default"/>
-
-            <TextView
-                android:id="@+id/notification_body_exercise"
-                style="@style/TextAppearance.Compat.Notification.Line2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/notification_body_2_default"
-                android:textStyle="italic"/>
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight="2"
+        <TextView
+            android:id="@+id/notification_body_set"
+            style="@style/TextAppearance.Compat.Notification.Info"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            />
+            android:fontFamily="@font/kanit_medium"
+            android:text="@string/notification_body_1_default" />
 
-        <ImageView
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:src="@drawable/preview_placeholder"
-            android:id="@+id/notification_image"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:contentDescription="Image" />
+        <TextView
+            android:id="@+id/notification_body_exercise"
+            style="@style/TextAppearance.Compat.Notification.Line2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/kanit_medium"
+            android:text="@string/notification_body_2_default"
+            android:textStyle="italic" />
+
+        <ImageButton
+            android:id="@+id/pauseAction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/rounded_button"
+            android:clickable="true"
+            android:contentDescription="@string/image"
+            android:src="@drawable/baseline_check_24"
+            android:focusable="true" />
 
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/notification_button_next"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:paddingStart="5dp"
-            android:layout_marginStart="10dp"
-            android:background="@android:color/transparent"
-            android:text="@string/notification_button_next"
-            tools:ignore="RtlSymmetry"
-            android:textColor="@color/primary"
-            style="?android:attr/buttonBarButtonStyle" />
-
-        <Button
-            android:id="@+id/notification_button_switch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingStart="5dp"
-            android:layout_marginStart="10dp"
-            android:background="@android:color/transparent"
-            android:text="@string/notification_button_change"
-            android:textColor="@color/primary"
-            tools:ignore="RtlSymmetry"
-            style="?android:attr/buttonBarButtonStyle" />
-
-    </LinearLayout>
+    <ImageView
+        android:id="@+id/notification_image"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:contentDescription="@string/image"
+        android:src="@drawable/preview_placeholder"
+        android:tintMode="multiply"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/md_theme_surface" />
 
 
 </LinearLayout>

@@ -18,7 +18,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.text.Html
 import android.widget.RemoteViews
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -52,7 +51,8 @@ class WorkoutSessionNotificationService : Service() {
     private lateinit var smallLayout: RemoteViews
     private lateinit var bigLayout: RemoteViews
 
-    private val mainHandler = Handler(Looper.getMainLooper()) //Handler for timer, used for disconnecting at the end
+    private val mainHandler =
+        Handler(Looper.getMainLooper()) //Handler for timer, used for disconnecting at the end
 
 
     inner class LocalBinder : Binder() {
@@ -63,7 +63,7 @@ class WorkoutSessionNotificationService : Service() {
     init {
         CoroutineScope(Dispatchers.Main).launch {
             session.listenState().collect { newState ->
-                if (newState.status != SessionStatus.START && newState.workout.workout.id != 0)
+                if (newState.workout.workout.id != 0)
                     updateNotification(newState)
             }
         }
@@ -79,6 +79,7 @@ class WorkoutSessionNotificationService : Service() {
         })
     }
 
+    @SuppressLint("RemoteViewLayout")
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -90,12 +91,16 @@ class WorkoutSessionNotificationService : Service() {
             val intent = PendingIntent.getBroadcast(
                 applicationContext,
                 0,
-                Intent().apply {
-                   putExtra("", "") //TODO
+                Intent(
+                    applicationContext,
+                    NotificationBroadcastReceiver::class.java
+                ).apply {
+                    println("Im clicked")
+                    putExtra("MESSAGE", "PAUSE")
                 },
                 PendingIntent.FLAG_IMMUTABLE
             )
-            bigLayout.setOnClickPendingIntent(R.id.notification_button_next, intent)
+            bigLayout.setOnClickPendingIntent(R.id.pauseAction, intent)
         }
     }
 
@@ -140,10 +145,13 @@ class WorkoutSessionNotificationService : Service() {
             R.id.notification_body_set,
             "${state.workout.exercises[state.currentExercise].type.name} (${state.currentExercise + 1}/${state.workout.exercises.size})"
         )
-        bigLayout.setBoolean(
-            R.id.notification_button_next,
-            "setEnabled",
-            state.status != SessionStatus.REST
+        bigLayout.setImageViewResource(
+            R.id.pauseAction,
+            if (state.paused || state.status == SessionStatus.EXERCISE) {
+                R.drawable.baseline_check_24
+            } else {
+                R.drawable.baseline_pause_24
+            }
         )
         //Collapsed notification
         smallLayout.setTextViewText(
@@ -196,6 +204,23 @@ class WorkoutSessionNotificationService : Service() {
 
 }
 
+@AndroidEntryPoint
+class NotificationBroadcastReceiver : BroadcastReceiver() {
+
+    @Inject
+    lateinit var session: SessionState
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        val message = intent?.getStringExtra("MESSAGE")
+        println("Im clicked $message")
+        if (message != null) {
+            if (message == "PAUSE") {
+                session.pauseAction()
+            }
+        }
+    }
+}
+
 enum class SessionStatus {
     START,
     REST,
@@ -229,18 +254,10 @@ fun defaultSessionUiState(size: Int) = SessionUiState(
     0L,
     true,
     bufferTimer = false,
-    if(Build.FINGERPRINT.contains("generic")) { 5 } else { 120 }
+    if (Build.FINGERPRINT.contains("generic")) {
+        5
+    } else {
+        120
+    }
 )
 
-class NotificationBroadcastReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {
-        val message = intent?.getStringExtra("MESSAGE")
-        if (message != null) {
-            Toast.makeText(
-                context,
-                message,
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-}
