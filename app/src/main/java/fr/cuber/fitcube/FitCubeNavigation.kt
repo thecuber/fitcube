@@ -5,6 +5,7 @@ import fr.cuber.fitcube.FitCubeRouteArgs.EXERCISE_ID
 import fr.cuber.fitcube.FitCubeRouteArgs.WORKOUT_ID
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_CHOOSE_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_EDIT_SCREEN
+import fr.cuber.fitcube.FitCubeScreens.EXERCISE_TYPE_EDIT_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.HOME_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.WORKOUT_INFO_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.WORKOUT_SESSION_SCREEN
@@ -15,6 +16,7 @@ private object FitCubeScreens {
     const val EXERCISE_CHOOSE_SCREEN = "workout_exercise_choose"
     const val EXERCISE_EDIT_SCREEN = "workout_exercise_edit"
     const val WORKOUT_SESSION_SCREEN = "workout_session"
+    const val EXERCISE_TYPE_EDIT_SCREEN = "exercise_type_edit"
 }
 
 object FitCubeRouteArgs {
@@ -28,6 +30,7 @@ object FitCubeRoutes {
     const val EXERCISE_CHOOSE = "$EXERCISE_CHOOSE_SCREEN/{$WORKOUT_ID}"
     const val EXERCISE_EDIT = "$EXERCISE_EDIT_SCREEN/{$EXERCISE_ID}"
     const val WORKOUT_SESSION = "$WORKOUT_SESSION_SCREEN/{$WORKOUT_ID}"
+    const val EXERCISE_TYPE_EDIT = "$EXERCISE_TYPE_EDIT_SCREEN/{$EXERCISE_ID}"
 }
 
 class FitCubeNavigationActions(private val navHostController: NavHostController) {
@@ -45,6 +48,10 @@ class FitCubeNavigationActions(private val navHostController: NavHostController)
 
     fun startWorkout(id: Int) {
         navHostController.navigate("${WORKOUT_SESSION_SCREEN}/${id}")
+    }
+
+    fun editExerciseType(it: Int) {
+        navHostController.navigate("${EXERCISE_TYPE_EDIT_SCREEN}/${it}")
     }
 
 }

@@ -25,7 +25,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,8 +34,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,6 +59,7 @@ import fr.cuber.fitcube.data.db.dao.HomeWorkout
 import fr.cuber.fitcube.data.db.dao.defaultHomeWorkout
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.ui.theme.customColors
+import fr.cuber.fitcube.utils.FitCubeAppBar
 import fr.cuber.fitcube.utils.parseDuration
 import java.util.Date
 
@@ -91,7 +89,6 @@ fun HomeScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScaffold(
     workouts: List<HomeWorkout>,
@@ -101,19 +98,7 @@ fun HomeScaffold(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                ),
-                title = {
-                    Text(
-                        "Fitcube",
-                        fontWeight = FontWeight(700)
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            FitCubeAppBar(title = "Fitcube")
         },
     ) {
         HomeSessionContent(

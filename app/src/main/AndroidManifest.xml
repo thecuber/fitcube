@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+
 
     <application
         android:allowBackup="true"
@@ -15,7 +18,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:targetApi="31">
-        <service android:name=".workout.session.WorkoutSessionNotificationService" />
+        <service android:name=".workout.session.WorkoutSessionService" android:foregroundServiceType="specialUse" android:exported="false"/>
         <receiver android:name=".workout.session.NotificationBroadcastReceiver"/>
         <activity
             android:name=".FitCubeActivity"

@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import androidx.room.Update
 import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.defaultExerciseType
@@ -35,6 +36,18 @@ interface ExerciseDao {
 
     @Insert
     suspend fun createWorkoutExercise(ex: WorkoutExercise): Long
+
+    @Query("SELECT * FROM exercise_types WHERE id = :id")
+    fun getExerciseType(id: Int): Flow<ExerciseType?>
+
+    @Query("UPDATE exercise_types SET image = :image WHERE id = :id")
+    suspend fun updateImages(image: List<String>, id: Int)
+
+    @Insert
+    suspend fun createExerciseType(workout: ExerciseType): Long
+
+    @Update
+    suspend fun updateExerciseType(workout: ExerciseType)
 }
 
 data class FullExercise(

@@ -8,7 +8,7 @@ data class ExerciseType(
     @PrimaryKey(autoGenerate = true) val id: Int,
     val name: String,
     val description: String,
-    val image: List<String>
+    var image: List<String>
 )
 
 fun defaultExerciseType(id: Int) = ExerciseType(
@@ -18,9 +18,24 @@ fun defaultExerciseType(id: Int) = ExerciseType(
     image = listOf()
 )
 
+fun voidExerciseType() = ExerciseType(
+    id = 0,
+    name = "",
+    description = "",
+    image = emptyList()
+)
+
 fun ExerciseType.imagePreview(): String {
     return if (image.isNotEmpty()) {
         image[0]
+    } else {
+        ""
+    }
+}
+
+fun ExerciseType.imagePagerPreview(index: Int): String {
+    return if (image.isNotEmpty() && index < image.size) {
+        image[index]
     } else {
         ""
     }

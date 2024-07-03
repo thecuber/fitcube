@@ -1,19 +1,14 @@
 package fr.cuber.fitcube.workout.session
 
-import android.annotation.SuppressLint
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
-import android.os.IBinder
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cuber.fitcube.data.SessionState
 import fr.cuber.fitcube.data.db.RoomRepository
 import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
 import fr.cuber.fitcube.data.db.entity.Session
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,44 +18,9 @@ class WorkoutSessionViewModel @Inject constructor(
     private val sessionState: SessionState
 ): ViewModel() {
 
-    @SuppressLint("StaticFieldLeak")
-    private lateinit var notificationService: WorkoutSessionNotificationService
-    private var bounded: Boolean = false
-
-    @SuppressLint("StaticFieldLeak")
-    private lateinit var context: Context
-
-    private val connection = object : ServiceConnection {
-
-        override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            val binder = service as WorkoutSessionNotificationService.LocalBinder
-            notificationService = binder.getService()
-            bounded = true
-        }
-
-        override fun onServiceDisconnected(arg0: ComponentName) {
-            bounded = false
-        }
-    }
-
     fun pauseAction() = sessionState.pauseAction()
 
-
-    init {
-        CoroutineScope(Dispatchers.Main).launch {
-            sessionState.onEnd().collect {
-                if (!it)
-                    return@collect
-                finishSession(sessionState.getValue())
-                context.unbindService(connection)
-            }
-        }
-    }
     fun getState() = sessionState.listenState()
-    fun bindService(intent: Intent, context: Context) {
-        context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
-        this.context = context
-    }
 
     fun setNextPrediction(prediction: List<Double>, index: Int) = sessionState.setNextPrediction(prediction, index)
 
@@ -70,7 +30,8 @@ class WorkoutSessionViewModel @Inject constructor(
     fun getWorkout(workoutId: Int) = dbRepository.getWorkout(workoutId)
     fun bindWorkout(workout: WorkoutWithExercises) = sessionState.bindWorkout(workout)
 
-    private suspend fun finishSession(state: SessionUiState) {
+    fun finishSession(context: Context) {
+        val state = sessionState.getValue()
         val m = HashMap<Int, List<Double>>()
         for (e in state.workout.exercises) {
             m[e.exercise.id] = e.exercise.prediction
@@ -82,7 +43,12 @@ class WorkoutSessionViewModel @Inject constructor(
             System.currentTimeMillis() - state.started,
             m
         )
-        dbRepository.createSession(session)
+        viewModelScope.launch {
+            dbRepository.createSession(session)
+        }
+        Intent(context, WorkoutSessionService::class.java).also { intent ->
+            context.startForegroundService(intent.setAction(WorkoutSessionService.Actions.STOP.toString()))
+        }
     }
 
     fun setRest(it: Int) {

@@ -87,9 +87,13 @@ fun WorkoutSessionScreen(
         initial = defaultWorkoutWithExercises(5)
     )
     LaunchedEffect(Unit) {
-        Intent(context, WorkoutSessionNotificationService::class.java).also { intent ->
-            viewModel.bindService(intent, context)
+        Intent(context, WorkoutSessionService::class.java).also { intent ->
+            context.startForegroundService(intent.setAction(WorkoutSessionService.Actions.START.toString()))
         }
+    }
+    if(state.status == SessionStatus.DONE){
+        println("YES")
+        viewModel.finishSession(context)
     }
     LaunchedEffect(workout) {
         viewModel.bindWorkout(workout)

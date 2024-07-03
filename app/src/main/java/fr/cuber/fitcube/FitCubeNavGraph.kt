@@ -11,6 +11,7 @@ import androidx.navigation.navArgument
 import fr.cuber.fitcube.FitCubeRouteArgs.EXERCISE_ID
 import fr.cuber.fitcube.FitCubeRouteArgs.WORKOUT_ID
 import fr.cuber.fitcube.exercise.choose.ExerciseChooseScreen
+import fr.cuber.fitcube.exercise.type.edit.ExerciseTypeEditScreen
 import fr.cuber.fitcube.exercise.workoutedit.WorkoutExerciseScreen
 import fr.cuber.fitcube.home.HomeScreen
 import fr.cuber.fitcube.workout.info.WorkoutInfoScreen
@@ -42,7 +43,7 @@ fun FitCubeNavGraph(
         ) { entry ->
             val id = entry.arguments?.getInt(WORKOUT_ID)!!
             WorkoutInfoScreen(
-                back = { navController.popBackStack() },
+                onClose = { navController.popBackStack() },
                 workoutId = id,
                 openExercise = { navActions.openExercise(it.id) },
                 startWorkout = { navActions.startWorkout(id) },
@@ -57,9 +58,10 @@ fun FitCubeNavGraph(
         ) { entry ->
             val id = entry.arguments?.getInt(WORKOUT_ID)!!
             ExerciseChooseScreen(
-                back = { navController.popBackStack() },
+                onClose = { navController.popBackStack() },
                 workout = id,
-                openExercise = { navActions.openExercise(it) }
+                openExercise = { navActions.openExercise(it) },
+                editExercise = { navActions.editExerciseType(it) }
             )
         }
         composable(
@@ -84,6 +86,16 @@ fun FitCubeNavGraph(
             WorkoutSessionScreen(
                 back = { navController.popBackStack() },
                 workoutId = id
+            )
+        }
+        composable(FitCubeRoutes.EXERCISE_TYPE_EDIT,
+            arguments = listOf(
+                navArgument(EXERCISE_ID) { type = NavType.IntType }
+            )) { entry ->
+            val id = entry.arguments?.getInt(EXERCISE_ID)!!
+            ExerciseTypeEditScreen(
+                onClose = { navController.popBackStack() },
+                id = id
             )
         }
     }

@@ -11,34 +11,28 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
-import android.os.Binder
-import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.text.Html
 import android.widget.RemoteViews
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dagger.hilt.android.AndroidEntryPoint
+import fr.cuber.fitcube.FitCubeActivity
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.SessionState
-import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
-import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
 import fr.cuber.fitcube.utils.boldPrediction
 import fr.cuber.fitcube.utils.parseTimer
-import fr.cuber.fitcube.workout.session.WorkoutSessionNotificationService.NotificationConstants.CHANNEL_ID
-import fr.cuber.fitcube.workout.session.WorkoutSessionNotificationService.NotificationConstants.NOTIFICATION_ID
+import fr.cuber.fitcube.workout.session.WorkoutSessionService.NotificationConstants.CHANNEL_ID
+import fr.cuber.fitcube.workout.session.WorkoutSessionService.NotificationConstants.NOTIFICATION_ID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Timer
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class WorkoutSessionNotificationService : Service() {
-
-    private val binder = LocalBinder()
+class WorkoutSessionService : Service() {
 
     @Inject
     lateinit var session: SessionState
@@ -51,37 +45,45 @@ class WorkoutSessionNotificationService : Service() {
     private lateinit var smallLayout: RemoteViews
     private lateinit var bigLayout: RemoteViews
 
-    private val mainHandler =
-        Handler(Looper.getMainLooper()) //Handler for timer, used for disconnecting at the end
-
-
-    inner class LocalBinder : Binder() {
-        // Return this instance of LocalService so clients can call public methods.
-        fun getService(): WorkoutSessionNotificationService = this@WorkoutSessionNotificationService
-    }
-
-    init {
-        CoroutineScope(Dispatchers.Main).launch {
-            session.listenState().collect { newState ->
-                if (newState.workout.workout.id != 0)
-                    updateNotification(newState)
-            }
-        }
-        timer()
-    }
+    private val timer = Timer()
 
     private fun timer() {
-        mainHandler.post(object : Runnable {
+        timer.schedule(object : java.util.TimerTask() {
             override fun run() {
                 session.timerTick()
-                mainHandler.postDelayed(this, 1000)
             }
-        })
+        }, 0, 1000)
     }
 
-    @SuppressLint("RemoteViewLayout")
-    override fun onCreate() {
-        super.onCreate()
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        println("Received start command ${intent?.action}")
+        when(intent?.action) {
+            Actions.START.name -> {
+                start()
+            }
+            Actions.STOP.name -> {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+
+    enum class Actions {
+        START, STOP
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        println("Task removed")
+        super.onTaskRemoved(rootIntent)
+    }
+
+    private fun start() {
         createNotificationChannel()
         RemoteViews(packageName, R.layout.notification_layout_small).apply {
             smallLayout = this
@@ -102,6 +104,14 @@ class WorkoutSessionNotificationService : Service() {
             )
             bigLayout.setOnClickPendingIntent(R.id.pauseAction, intent)
         }
+        CoroutineScope(Dispatchers.Main).launch {
+            session.listenState().collect { newState ->
+                if (newState.workout.workout.id != 0)
+                    updateNotification(newState)
+            }
+        }
+        timer()
+        startForeground(NOTIFICATION_ID, NotificationCompat.Builder(this, CHANNEL_ID).build())
     }
 
     @SuppressLint("RemoteViewLayout")
@@ -164,13 +174,16 @@ class WorkoutSessionNotificationService : Service() {
             .setCustomBigContentView(bigLayout)
             .setUsesChronometer(state.status != SessionStatus.START)
             .setWhen(state.started)
+            .setOnlyAlertOnce(true)
             .setContentText("Workout text")
             .setContentTitle("Workout session")
+            .setOngoing(true)
+            .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, FitCubeActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
         with(NotificationManagerCompat.from(this)) {
             if (ActivityCompat.checkSelfPermission(
-                    this@WorkoutSessionNotificationService,
+                    this@WorkoutSessionService,
                     Manifest.permission.POST_NOTIFICATIONS
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
@@ -184,26 +197,16 @@ class WorkoutSessionNotificationService : Service() {
     private fun createNotificationChannel() {
         val name = getString(R.string.channel_name)
         val descriptionText = getString(R.string.channel_description)
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val importance = NotificationManager.IMPORTANCE_HIGH
         val mChannel = NotificationChannel(CHANNEL_ID, name, importance)
         mChannel.description = descriptionText
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(mChannel)
     }
 
-    override fun onBind(intent: Intent): IBinder {
-        createNotificationChannel()
-        return binder
-    }
-
-    override fun onUnbind(intent: Intent?): Boolean {
-        mainHandler.removeCallbacksAndMessages(null)
-        stopSelf()
-        return super.onUnbind(intent)
-    }
-
 }
 
+//Receiver for actions on notification
 @AndroidEntryPoint
 class NotificationBroadcastReceiver : BroadcastReceiver() {
 
@@ -221,43 +224,5 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
     }
 }
 
-enum class SessionStatus {
-    START,
-    REST,
-    EXERCISE,
-    TIMING,
-    DONE
-}
 
-data class SessionUiState(
-    val status: SessionStatus,
-    val currentSet: Int,
-    val currentExercise: Int,
-    val timer: Int,
-    val workout: WorkoutWithExercises,
-    val started: Long,
-    val predictions: List<List<Double>>,
-    val elapsedTime: Long,
-    val paused: Boolean,
-    val bufferTimer: Boolean,
-    val rest: Int
-)
-
-fun defaultSessionUiState(size: Int) = SessionUiState(
-    status = SessionStatus.START,
-    0,
-    0,
-    10,
-    defaultWorkoutWithExercises(size),
-    0L,
-    List(size) { List(4) { 10.0 } },
-    0L,
-    true,
-    bufferTimer = false,
-    if (Build.FINGERPRINT.contains("generic")) {
-        5
-    } else {
-        120
-    }
-)
 

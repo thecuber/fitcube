@@ -1,8 +1,9 @@
 package fr.cuber.fitcube.workout.info
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,34 +15,29 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
 import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
@@ -53,6 +49,8 @@ import fr.cuber.fitcube.data.db.entity.defaultWorkout
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
+import fr.cuber.fitcube.utils.FitCubeAppBar
+import fr.cuber.fitcube.utils.OutlinedTIButton
 import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.showPrediction
 import java.text.SimpleDateFormat
@@ -61,7 +59,7 @@ import java.util.Date
 @Composable
 fun WorkoutInfoScreen(
     modifier: Modifier = Modifier,
-    back: () -> Unit,
+    onClose: () -> Unit,
     workoutId: Int,
     openExercise: (WorkoutExercise) -> Unit,
     addExercise: () -> Unit,
@@ -77,7 +75,7 @@ fun WorkoutInfoScreen(
         startWorkout = startWorkout,
         exercises = workoutExercises.exercises,
         sessions = sessions,
-        back = back,
+        onClose = onClose,
         modifier = modifier,
         openExercise = openExercise,
         addExercise = addExercise
@@ -90,19 +88,16 @@ fun WorkoutInfoScaffold(
     exercises: List<FullExercise>,
     sessions: List<Session>,
     openExercise: (WorkoutExercise) -> Unit,
-    back: () -> Unit,
+    onClose: () -> Unit,
     addExercise: () -> Unit,
     startWorkout: () -> Unit,
     modifier: Modifier = Modifier
 
 ) {
+    
     Scaffold(
         topBar = {
-            WorkoutInfoAppBar(
-                title = workout.name,
-                onBack = back,
-                onAdd = addExercise,
-                onRemove = {})
+            FitCubeAppBar(title = workout.name, onClose = onClose)
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
@@ -116,47 +111,13 @@ fun WorkoutInfoScaffold(
             openExercise = openExercise,
             modifier = modifier.padding(it),
             exercises = exercises,
-            sessions = sessions
+            sessions = sessions,
+            onAdd = addExercise,
+            onRemove = {}
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun WorkoutInfoAppBar(
-    onBack: () -> Unit,
-    onAdd: () -> Unit,
-    onRemove: () -> Unit,
-    title: String
-) {
-    TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        title = {
-            Text(title)
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(id = R.string.menu_back))
-            }
-        },
-        actions = {
-            IconButton(onClick = onAdd) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "Save modifications"
-                )
-            }
-            IconButton(onClick = onRemove) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "Save modifications"
-                )
-            }
-
-        },
-        modifier = Modifier.fillMaxWidth()
-    )
-}
 
 @SuppressLint("SimpleDateFormat")
 @Composable
@@ -177,26 +138,26 @@ fun WorkoutInfoStatistics(
     }
     Column(
         modifier = modifier
-            .border(
-                1.dp,
-                color = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(20)
-            )
+            .background(MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(20.dp))
             .padding(10.dp)
     ) {
-        Text("Total sessions: $total")
-        Text("Estimate time: ${parseDuration(estimate)}")
-        Text("Last session: $last")
+        Text("Total sessions: $total", color = Color.White)
+        Text("Estimate time: ${parseDuration(estimate)}", color = Color.White)
+        Text("Last session: $last", color = Color.White)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WorkoutInfoContent(
     openExercise: (WorkoutExercise) -> Unit,
     exercises: List<FullExercise>,
     modifier: Modifier = Modifier,
-    sessions: List<Session>
+    sessions: List<Session>,
+    onAdd: () -> Unit,
+    onRemove: (List<Int>) -> Unit,
 ) {
+    val selection = remember { mutableStateOf(listOf<Int>()) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -206,15 +167,41 @@ fun WorkoutInfoContent(
         WorkoutInfoStatistics(
             sessions = sessions,
             modifier = Modifier
-                .padding(10.dp)
+                .padding(vertical = 10.dp)
                 .fillMaxWidth()
         )
         HorizontalDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            OutlinedTIButton(text = "Add exercise", onClick = onAdd, icon = Icons.Filled.Add)
+            OutlinedTIButton(text = "Delete exercises", onClick = { /*TODO*/ }, icon = Icons.Filled.Delete)
+        }
         LazyColumn {
             items(exercises) {
                 WorkoutInfoExerciseItem(exercise = it, modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { openExercise(it.exercise) })
+                    .combinedClickable(
+                        onClick = {
+                            if(selection.value.isEmpty()) {
+                                openExercise(it.exercise)
+                            } else {
+                                if (selection.value.contains(it.type.id)) {
+                                    selection.value = selection.value.filter { id -> id != it.type.id }
+                                } else {
+                                    selection.value += it.type.id
+                                }
+                            }
+                        },
+                        onLongClick = {
+                            if(selection.value.isEmpty() || !selection.value.contains(it.type.id)) {
+                                selection.value += it.type.id
+                            } else {
+                                selection.value = selection.value.filter { id -> id != it.type.id }
+                            }
+                        }
+                    ))
             }
         }
 
@@ -243,6 +230,7 @@ fun WorkoutInfoExerciseItem(
                 }
             )
         }
+        //FIXME NOT SAME SIZE
         ExerciseIcon(
             exercise.type.imagePreview(),
             Modifier
@@ -277,7 +265,7 @@ fun WorkoutInfoScaffoldPreview() {
                     defaultFullExercise(it)
                 },
                 openExercise = {},
-                back = {},
+                onClose = {},
                 addExercise = {},
                 startWorkout = {},
                 sessions = List(10) {

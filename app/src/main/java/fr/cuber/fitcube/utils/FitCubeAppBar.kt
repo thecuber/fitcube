@@ -1,82 +1,84 @@
 package fr.cuber.fitcube.utils
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import fr.cuber.fitcube.R
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.wear.compose.material.ButtonDefaults
+import androidx.wear.compose.material.Icon
+import androidx.wear.compose.material.OutlinedButton
+import fr.cuber.fitcube.ui.theme.FitCubeTheme
 
+private val default: () -> Unit = {}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FitCubeAppBar(
-    title: String
-) {
-    TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        title = {
-            Text(title)
-        },
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FitCubeAppBarWithBack(
     title: String,
-    onBack: () -> Unit
+    onClose: () -> Unit = default,
+    actions: Map<ImageVector, () -> Unit> = emptyMap()
 ) {
+    val close = (onClose !== default)
+    val color = MaterialTheme.colorScheme.primary
     TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            titleContentColor = color,
+            navigationIconContentColor = color
+        ),
         title = {
-            Text(title)
+            Text(title, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 5.dp))
         },
         navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(id = R.string.menu_back))
-            }
-        },
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun WorkoutExerciseAppBar(
-    title: String,
-    onBack: () -> Unit,
-    onSave: () -> Unit
-) {
-    TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        title = {
-            Text(title)
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(id = R.string.menu_back))
+            if (close) {
+                OutlinedButton(
+                    onClick = onClose,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder(
+                        borderColor = MaterialTheme.colorScheme.primary,
+                        borderWidth = 2.dp
+                    )
+                ) {
+                    Icon(imageVector = Icons.Rounded.Close, contentDescription = null)
+                }
             }
         },
         actions = {
-            IconButton(onClick = onSave) {
-                Icon(
-                    imageVector = Icons.Filled.Done,
-                    contentDescription = "Save modifications"
-                )
+            actions.forEach { (icon, action) ->
+                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.clickable { action() }, tint = color)
             }
-
+            Spacer(modifier = Modifier.padding(5.dp))
         },
         modifier = Modifier.fillMaxWidth()
     )
+}
+
+@Preview
+@Composable
+private fun FitCubeAppBarPreview() {
+    FitCubeTheme {
+        Surface {
+            FitCubeAppBar(title = "FitCube", onClose = {},
+                actions = mapOf(Icons.Rounded.Close to {})
+            )
+        }
+    }
 }

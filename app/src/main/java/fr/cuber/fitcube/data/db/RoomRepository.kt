@@ -3,9 +3,11 @@ package fr.cuber.fitcube.data.db
 import fr.cuber.fitcube.data.db.dao.ExerciseDao
 import fr.cuber.fitcube.data.db.dao.SessionDao
 import fr.cuber.fitcube.data.db.dao.WorkoutDao
+import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.Session
 import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
+import kotlinx.coroutines.flow.filterNotNull
 import javax.inject.Inject
 
 class RoomRepository @Inject constructor(
@@ -13,7 +15,7 @@ class RoomRepository @Inject constructor(
     private val workoutDao: WorkoutDao,
     private val sessionDao: SessionDao
 
-){
+) {
     fun getExerciseTypes() = exerciseDao.getAllExerciseTypes()
 
     fun getWorkouts() = workoutDao.getAllWorkouts()
@@ -36,5 +38,12 @@ class RoomRepository @Inject constructor(
     suspend fun createSession(session: Session) = sessionDao.createSession(session)
 
     suspend fun updateWorkoutStatus(id: Int, status: Boolean) = workoutDao.updateStatus(id, status)
+    suspend fun updateImages(image: List<String>, id: Int) = exerciseDao.updateImages(image, id)
+
+    suspend fun createExerciseType(exercise: ExerciseType) = exerciseDao.createExerciseType(exercise)
+
+    suspend fun updateExerciseType(exercise: ExerciseType) = exerciseDao.updateExerciseType(exercise)
+
+    fun getExerciseType(id: Int) = exerciseDao.getExerciseType(id).filterNotNull()
 
 }

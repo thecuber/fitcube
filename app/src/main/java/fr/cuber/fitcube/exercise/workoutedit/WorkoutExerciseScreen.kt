@@ -4,19 +4,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +42,7 @@ import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
-import fr.cuber.fitcube.utils.WorkoutExerciseAppBar
+import fr.cuber.fitcube.utils.FitCubeAppBar
 import fr.cuber.fitcube.utils.parsePrediction
 import fr.cuber.fitcube.utils.showPrediction
 import kotlinx.coroutines.launch
@@ -82,16 +85,20 @@ fun WorkoutExerciseScaffold(
     onSave: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val sbHostState = remember { SnackbarHostState() }
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = { SnackbarHost(hostState = sbHostState) },
         topBar = {
-            WorkoutExerciseAppBar(title = "Modify exercise", onBack = back, onSave = {
-                onSave()
-                scope.launch {
-                    snackbarHostState.showSnackbar("Exercise saved !")
-                }
-            })
+            FitCubeAppBar(
+                title = "Exercise sets",
+                onClose = back,
+                actions = mapOf(Icons.Filled.Done to {
+                    onSave()
+                    scope.launch {
+                        sbHostState.showSnackbar("Exercise saved !")
+                    }
+                })
+            )
         }
     ) {
         WorkoutExerciseContent(
@@ -139,15 +146,16 @@ fun WorkoutExerciseContent(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             ExerciseIcon(exercise.type.imagePreview(), Modifier)
             Spacer(modifier = Modifier.padding(5.dp))
-            Text(text = exercise.type.description, fontStyle = FontStyle.Italic)
+            Text(text = exercise.type.description, fontStyle = FontStyle.Italic, modifier = Modifier.fillMaxHeight(0.3f))
             ExerciseModeSelect(mode = exercise.exercise.mode) {
                 setExercise(exercise.copy(exercise = exercise.exercise.copy(mode = it)))
             }
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 5.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 5.dp))
             Text(text = "Prediction for current session:")
             Text(
                 showPrediction(
@@ -159,7 +167,7 @@ fun WorkoutExerciseContent(
                 )
             )
             Spacer(modifier = Modifier.padding(5.dp))
-            TextField(value = prediction, maxLines = 1, onValueChange = {
+            OutlinedTextField(value = prediction, maxLines = 1, onValueChange = {
                 validParsing = it.matches(regexPattern.toRegex())
                 prediction = it
             }, isError = !validParsing, label = { Text("Prediction") })
