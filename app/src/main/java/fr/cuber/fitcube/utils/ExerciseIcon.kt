@@ -1,6 +1,5 @@
 package fr.cuber.fitcube.utils
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -22,9 +21,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fr.cuber.fitcube.R
+import fr.cuber.fitcube.data.db.entity.imageStream
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
-import java.io.File
-import java.io.FileInputStream
 
 @Composable
 fun ExerciseIcon(img: String, modifier: Modifier = Modifier) {
@@ -33,22 +31,7 @@ fun ExerciseIcon(img: String, modifier: Modifier = Modifier) {
     LaunchedEffect(img) {
         if(img.isNotEmpty()){
             try {
-                val type = img.subSequence(0, 3)
-                val fileName = img.substring(4)
-                println("Image type $type")
-                val file = when (type) {
-                    "png" -> {
-                        context.assets.open("images/$fileName")
-                    }
-                    "fld" -> {
-                        FileInputStream(
-                            File(context.getDir("images", Context.MODE_PRIVATE), fileName)
-                        )
-                    }
-                    else -> {
-                        null
-                    }
-                }
+                val file = imageStream(img, context)
                 bitmapState =
                     BitmapFactory.decodeStream(file)
             } catch (e: Exception) {//If image is not found, or run during preview

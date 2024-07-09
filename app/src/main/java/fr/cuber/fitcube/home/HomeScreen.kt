@@ -117,7 +117,7 @@ fun HomeScreenPreview() {
     FitCubeTheme {
         Surface {
             HomeScaffold(
-                workouts = List(5) {
+                workouts = List(10) {
                     defaultHomeWorkout(it)
                 },
                 startWorkout = {},

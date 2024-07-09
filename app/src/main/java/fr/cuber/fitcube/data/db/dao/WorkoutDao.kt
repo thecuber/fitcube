@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.Flow
 interface WorkoutDao {
 
     @Transaction
-    @Query("SELECT workouts.*, AVG(sessions.duration) as estimated, MAX(sessions.date) as date, COUNT(workout_exercises.id) as exerciseCount FROM workouts " +
+    @Query("SELECT workouts.*, AVG(sessions.duration) as estimated, MAX(sessions.date) as date, COUNT(DISTINCT workout_exercises.id) as exerciseCount FROM workouts " +
             "LEFT JOIN sessions ON sessions.workoutId = workouts.id " +
             "LEFT JOIN workout_exercises ON workout_exercises.workoutId = workouts.id " +
             "GROUP BY workouts.id")
@@ -30,6 +30,13 @@ interface WorkoutDao {
 
     @Query("UPDATE workouts SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Int, status: Boolean)
+
+    @Query("DELETE FROM workouts WHERE id = :workoutId")
+    suspend fun deleteWorkout(workoutId: Int)
+
+    @Transaction
+    @Query("SELECT * FROM workouts WHERE workouts.id = :workoutId")
+    suspend fun getWorkoutSuspend(workoutId: Int): WorkoutWithExercises
 
 }
 

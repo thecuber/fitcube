@@ -2,14 +2,11 @@ package fr.cuber.fitcube.data.di
 
 import android.content.Context
 import androidx.room.Room
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import fr.cuber.fitcube.data.SessionState
-import fr.cuber.fitcube.data.SessionStateImpl
 import fr.cuber.fitcube.data.db.AppDatabase
 import javax.inject.Singleton
 
@@ -42,15 +39,4 @@ class AppModule {
     fun provideSessionDao(db: AppDatabase) =
         db.getSessionDao()
 
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class SessionModule {
-
-    @Singleton
-    @Binds
-    abstract fun provideSessionState(
-        sessionState: SessionStateImpl
-    ): SessionState
 }

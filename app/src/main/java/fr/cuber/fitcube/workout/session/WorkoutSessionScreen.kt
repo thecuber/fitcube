@@ -1,6 +1,5 @@
 package fr.cuber.fitcube.workout.session
 
-import android.content.Intent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -65,10 +64,11 @@ import androidx.wear.compose.material.OutlinedButton
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
-import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
+import fr.cuber.fitcube.utils.LoadingFlow
+import fr.cuber.fitcube.utils.PlaceholderLoaderPreview
 import fr.cuber.fitcube.utils.PredictionField
 import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.parseTimer
@@ -82,37 +82,42 @@ fun WorkoutSessionScreen(
     viewModel: WorkoutSessionViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val state by viewModel.getState().collectAsState()
-    val workout by viewModel.getWorkout(workoutId).collectAsState(
-        initial = defaultWorkoutWithExercises(5)
-    )
-    LaunchedEffect(Unit) {
-        Intent(context, WorkoutSessionService::class.java).also { intent ->
-            context.startForegroundService(intent.setAction(WorkoutSessionService.Actions.START.toString()))
+    val loadingState by viewModel.state.collectAsState(initial = LoadingFlow.Loading)
+    LaunchedEffect(key1 = Unit) {
+        viewModel.onStart(context, workoutId, back)
+    }
+    when (loadingState) {
+        is LoadingFlow.Loading -> {
+            PlaceholderLoaderPreview()
         }
+
+        is LoadingFlow.Success -> {
+            val state = (loadingState as LoadingFlow.Success<SessionState>).data
+            WorkoutSessionScaffold(
+                state = state,
+                onPauseAction = {
+                    viewModel.pauseAction()
+                },
+                closeSession = {
+                    viewModel.closeService()
+                },
+                onRestChange = { viewModel.setRest(it) },
+                onCurrentWeightChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
+                onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) }
+            )
+        }
+
+        is LoadingFlow.Error -> TODO()
     }
-    if(state.status == SessionStatus.DONE){
-        println("YES")
-        viewModel.finishSession(context)
-    }
-    LaunchedEffect(workout) {
-        viewModel.bindWorkout(workout)
-    }
-    WorkoutSessionScaffold(
-        state = state,
-        onPauseAction = { viewModel.pauseAction() },
-        closeSession = back,
-        onRestChange = { viewModel.setRest(it) },
-        onCurrentWeightChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
-        onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) }
-    )
+
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutSessionScaffold(
     modifier: Modifier = Modifier,
-    state: SessionUiState,
+    state: SessionState,
     onPauseAction: () -> Unit,
     closeSession: () -> Unit,
     onRestChange: (Int) -> Unit,
@@ -166,7 +171,7 @@ fun WorkoutSessionContentPreview() {
     FitCubeTheme {
         Surface {
             WorkoutSessionScaffold(
-                state = defaultSessionUiState(10).copy(
+                state = defaultSessionState(10).copy(
                     currentSet = 1,
                     timer = 83,
                     elapsedTime = 1000 * (3600L + 23 * 60L + 45L)
@@ -192,7 +197,7 @@ enum class Expanded {
 @Composable
 fun WorkoutSessionContent(
     modifier: Modifier = Modifier,
-    state: SessionUiState,
+    state: SessionState,
     onPauseAction: () -> Unit,
     onRestChange: (Int) -> Unit,
     onCurrentWeightChange: (List<Double>, Int) -> Unit,
@@ -258,7 +263,7 @@ fun WorkoutSessionContent(
                 ?: 0,
             progress = progress,
             elapsedTime = state.elapsedTime,
-            started = state.status != SessionStatus.START,
+            status = state.status,
             rest = state.rest,
             setRest = onRestChange,
             setExpanded = {
@@ -380,7 +385,7 @@ fun WorkoutSessionActions(
     paused: Boolean,
     timer: Int,
     expanded: Expanded,
-    started: Boolean,
+    status: SessionStatus,
     currentSet: Int,
     rest: Int,
     setRest: (Int) -> Unit,
@@ -390,30 +395,47 @@ fun WorkoutSessionActions(
     modifier: Modifier = Modifier,
     setExpanded: () -> Unit
 ) {
-    //TODO Change depending on the status for an end action
+    val started = status != SessionStatus.START
     val progressAnimation by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing), label = "",
     )
-    Column(modifier = modifier.clickable { setExpanded() }) {
+    Column(modifier = modifier.clickable { setExpanded() }.padding(horizontal = 10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = if (timer > 0) {
-                    parseTimer(timer)
-                } else {
-                    "Set ${currentSet + 1}/$totalSets"
-                },
-                fontSize = 50.sp,
-                fontWeight = FontWeight(700),
-                modifier = Modifier.padding(horizontal = 10.dp)
-            )
+            Column {
+                Text(
+                    text = when (status) {
+                        SessionStatus.START, SessionStatus.REST -> {
+                            parseTimer(timer)
+                        }
+                        SessionStatus.EXERCISE -> {
+                            "Set ${currentSet + 1}/$totalSets"
+                        }
+                        else -> {
+                            "Finish"
+                        }
+                    },
+                    fontSize = 50.sp,
+                    fontWeight = FontWeight(700),
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+                Text(
+                    text = if (started) {
+                        "Elapsed time: ${parseDuration(elapsedTime)}"
+                    } else {
+                        "Starting in..."
+                    },
+                    fontStyle = FontStyle.Italic,
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+            }
             Spacer(modifier = Modifier.weight(1f))
             FilledIconButton(
                 onClick = onPauseAction,
                 modifier = Modifier.size(55.dp)
             ) {
                 if (timer > 0) {
-                    if (paused) {
+                    if (paused || status == SessionStatus.EXERCISE || status == SessionStatus.DONE) {
                         Icon(imageVector = Icons.Rounded.PlayArrow, contentDescription = "")
                     } else {
                         Icon(
@@ -425,32 +447,24 @@ fun WorkoutSessionActions(
                     Icon(imageVector = Icons.Rounded.Done, contentDescription = "")
                 }
             }
-            Spacer(modifier = Modifier.padding(end = 10.dp))
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = if (started) {
-                    "Elapsed time: ${parseDuration(elapsedTime)}"
-                } else {
-                    "Starting in..."
+        Spacer(modifier = Modifier.padding(horizontal = 10.dp))
+        if (expanded == Expanded.TIMER) {
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.End),
+                value = rest.toString(),
+                maxLines = 1,
+                onValueChange = {
+                    setRest(it.toIntOrNull() ?: 0)
                 },
-                fontStyle = FontStyle.Italic,
-                modifier = Modifier.padding(horizontal = 10.dp)
-            )
-            if (expanded == Expanded.TIMER) {
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(0.5f),
-                    textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.End),
-                    value = rest.toString(),
-                    maxLines = 1,
-                    onValueChange = {
-                        setRest(it.toIntOrNull() ?: 0)
-                    },
-                    suffix = { Text("s") },
-                    label = { Text("Rest time") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+                suffix = { Text("s") },
+                label = { Text("Rest time") },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
                 )
-            }
+            )
         }
         LinearProgressIndicator(
             progress = { progressAnimation },
@@ -476,7 +490,7 @@ fun WorkoutSessionActionsPreview() {
                 currentSet = 1,
                 totalSets = 4,
                 elapsedTime = 3600L + 23 * 60L + 45L,
-                started = false,
+                status = SessionStatus.DONE,
                 expanded = Expanded.TIMER,
                 rest = 30,
                 setRest = {},

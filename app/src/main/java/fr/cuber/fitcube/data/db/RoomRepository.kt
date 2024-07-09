@@ -46,4 +46,9 @@ class RoomRepository @Inject constructor(
 
     fun getExerciseType(id: Int) = exerciseDao.getExerciseType(id).filterNotNull()
 
+    suspend fun deleteExercises(ids: List<Int>) = exerciseDao.deleteExercises(ids)
+    suspend fun deleteWorkout(workoutId: Int) = workoutDao.deleteWorkout(workoutId)
+
+    suspend fun getWorkoutSuspend(workoutId: Int) = workoutDao.getWorkoutSuspend(workoutId)
+
 }

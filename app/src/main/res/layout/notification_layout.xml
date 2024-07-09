@@ -3,8 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/notif_layout"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
     android:background="@color/md_theme_surface"
     android:orientation="horizontal"
     tools:layout_height="64dp"
@@ -22,6 +22,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="@font/kanit_medium"
+            android:textFontWeight="700"
             android:text="@string/notification_title_big" />
 
         <TextView
@@ -32,32 +33,46 @@
             android:fontFamily="@font/kanit_medium"
             android:text="@string/notification_body_1_default" />
 
-        <TextView
-            android:id="@+id/notification_body_exercise"
-            style="@style/TextAppearance.Compat.Notification.Line2"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/kanit_medium"
-            android:text="@string/notification_body_2_default"
-            android:textStyle="italic" />
+            android:orientation="horizontal">
 
-        <ImageButton
-            android:id="@+id/pauseAction"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/rounded_button"
-            android:clickable="true"
-            android:contentDescription="@string/image"
-            android:src="@drawable/baseline_check_24"
-            android:focusable="true" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/kanit_medium"
+                android:textColor="@color/md_theme_primary"
+                android:text="@string/pause"
+                android:paddingEnd="20dp"
+                android:id="@+id/pauseAction"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/kanit_medium"
+                android:textColor="@color/md_theme_primary"
+                android:text="@string/pause"
+                />
+
+        </LinearLayout>
+
+
 
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        tools:ignore="UselessLeaf" />
 
     <ImageView
         android:id="@+id/notification_image"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_height="64dp"
+        android:layout_width="64dp"
         android:contentDescription="@string/image"
         android:src="@drawable/preview_placeholder"
         android:tintMode="multiply"

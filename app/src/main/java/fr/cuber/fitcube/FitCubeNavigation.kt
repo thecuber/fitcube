@@ -33,6 +33,8 @@ object FitCubeRoutes {
     const val EXERCISE_TYPE_EDIT = "$EXERCISE_TYPE_EDIT_SCREEN/{$EXERCISE_ID}"
 }
 
+fun sessionRoute(id: Int) = "${WORKOUT_SESSION_SCREEN}/$id"
+
 class FitCubeNavigationActions(private val navHostController: NavHostController) {
     fun openWorkout(id: Int) {
         navHostController.navigate("${WORKOUT_INFO_SCREEN}/$id")
@@ -47,7 +49,7 @@ class FitCubeNavigationActions(private val navHostController: NavHostController)
     }
 
     fun startWorkout(id: Int) {
-        navHostController.navigate("${WORKOUT_SESSION_SCREEN}/${id}")
+        navHostController.navigate(sessionRoute(id))
     }
 
     fun editExerciseType(it: Int) {

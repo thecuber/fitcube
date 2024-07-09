@@ -78,7 +78,14 @@ fun WorkoutInfoScreen(
         onClose = onClose,
         modifier = modifier,
         openExercise = openExercise,
-        addExercise = addExercise
+        addExercise = addExercise,
+        onRemove = {
+            println("Deleting $it")
+            viewModel.deleteExercises(it) },
+        deleteWorkout = {
+            viewModel.deleteWorkout(workoutId)
+            onClose()
+        }
     )
 }
 
@@ -91,13 +98,13 @@ fun WorkoutInfoScaffold(
     onClose: () -> Unit,
     addExercise: () -> Unit,
     startWorkout: () -> Unit,
-    modifier: Modifier = Modifier
-
+    modifier: Modifier = Modifier,
+    onRemove: (List<Int>) -> Unit,
+    deleteWorkout: () -> Unit
 ) {
-    
     Scaffold(
         topBar = {
-            FitCubeAppBar(title = workout.name, onClose = onClose)
+            FitCubeAppBar(title = workout.name, onClose = onClose, actions = mapOf(Icons.Filled.Delete to deleteWorkout))
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
@@ -113,7 +120,7 @@ fun WorkoutInfoScaffold(
             exercises = exercises,
             sessions = sessions,
             onAdd = addExercise,
-            onRemove = {}
+            onRemove = onRemove
         )
     }
 }
@@ -138,7 +145,10 @@ fun WorkoutInfoStatistics(
     }
     Column(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(20.dp))
+            .background(
+                MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(20.dp)
+            )
             .padding(10.dp)
     ) {
         Text("Total sessions: $total", color = Color.White)
@@ -160,14 +170,13 @@ fun WorkoutInfoContent(
     val selection = remember { mutableStateOf(listOf<Int>()) }
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .padding(20.dp),
+            .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         WorkoutInfoStatistics(
             sessions = sessions,
             modifier = Modifier
-                .padding(vertical = 10.dp)
+                .padding(vertical = 10.dp, horizontal = 20.dp)
                 .fillMaxWidth()
         )
         HorizontalDivider()
@@ -176,32 +185,49 @@ fun WorkoutInfoContent(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             OutlinedTIButton(text = "Add exercise", onClick = onAdd, icon = Icons.Filled.Add)
-            OutlinedTIButton(text = "Delete exercises", onClick = { /*TODO*/ }, icon = Icons.Filled.Delete)
+            OutlinedTIButton(
+                text = "Delete exercises",
+                onClick = {
+                    onRemove(selection.value)
+                    selection.value = listOf()
+                },
+                icon = Icons.Filled.Delete
+            )
         }
         LazyColumn {
             items(exercises) {
                 WorkoutInfoExerciseItem(exercise = it, modifier = Modifier
                     .fillMaxWidth()
+                    .background(
+                        if (selection.value.contains(it.exercise.id)) {
+                            Color.Gray
+                        } else {
+                            Color.Transparent
+                        }
+                    )
                     .combinedClickable(
                         onClick = {
-                            if(selection.value.isEmpty()) {
+                            if (selection.value.isEmpty()) {
                                 openExercise(it.exercise)
                             } else {
-                                if (selection.value.contains(it.type.id)) {
-                                    selection.value = selection.value.filter { id -> id != it.type.id }
+                                if (selection.value.contains(it.exercise.id)) {
+                                    selection.value =
+                                        selection.value.filter { id -> id != it.exercise.id }
                                 } else {
-                                    selection.value += it.type.id
+                                    selection.value += it.exercise.id
                                 }
                             }
                         },
                         onLongClick = {
-                            if(selection.value.isEmpty() || !selection.value.contains(it.type.id)) {
-                                selection.value += it.type.id
+                            if (selection.value.isEmpty() || !selection.value.contains(it.exercise.id)) {
+                                selection.value += it.exercise.id
                             } else {
-                                selection.value = selection.value.filter { id -> id != it.type.id }
+                                selection.value = selection.value.filter { id -> id != it.exercise.id }
                             }
                         }
-                    ))
+                    )
+                    .padding(horizontal = 20.dp))
+
             }
         }
 
@@ -270,7 +296,9 @@ fun WorkoutInfoScaffoldPreview() {
                 startWorkout = {},
                 sessions = List(10) {
                     defaultSession()
-                }
+                },
+                onRemove = {},
+                deleteWorkout = {}
             )
         }
     }

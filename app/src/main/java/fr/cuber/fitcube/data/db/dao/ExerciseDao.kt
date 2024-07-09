@@ -48,6 +48,9 @@ interface ExerciseDao {
 
     @Update
     suspend fun updateExerciseType(workout: ExerciseType)
+
+    @Query("DELETE FROM workout_exercises WHERE id IN (:ids)")
+    suspend fun deleteExercises(ids: List<Int>)
 }
 
 data class FullExercise(
