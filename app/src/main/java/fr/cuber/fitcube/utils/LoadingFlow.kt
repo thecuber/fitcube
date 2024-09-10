@@ -9,14 +9,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import fr.cuber.fitcube.R
@@ -28,14 +26,16 @@ sealed class LoadingFlow<out T> {
 
     data class Success<T>(val data: T) : LoadingFlow<T>()
 
-    data class Error(
-        val t: Throwable,
-        var consumed: Boolean = false
-    ) : LoadingFlow<Nothing>()
+    override fun toString(): String =
+        when (this) {
+            Loading -> "Loading"
+            is Success -> "Success"
+        }
+
 }
 
 @Composable
-fun PlaceholderLoader() {
+private fun LoadingFlowContent() {
     val infiniteTransition = rememberInfiniteTransition(label = "")
     val angle by infiniteTransition.animateFloat(
         initialValue = 0F,
@@ -45,21 +45,65 @@ fun PlaceholderLoader() {
         ), label = ""
     )
     Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            modifier = Modifier.fillMaxSize(),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.Center
     ) {
-        //TODO modify when go the icon
-        Image(painter = painterResource(id = R.drawable.ic_launcher_foreground), modifier = Modifier.rotate(angle), contentDescription = null, colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary))
+        Image(painter = painterResource(id = R.drawable.appicon), modifier = Modifier.rotate(angle), contentDescription = null)
     }
 }
+
+@Composable
+fun <T> LoadingFlowContainer(
+    value: LoadingFlow<T>,
+    content: @Composable (T) -> Unit,
+) {
+    when (value) {
+        is LoadingFlow.Loading -> {
+            LoadingFlowContent()
+        }
+        is LoadingFlow.Success -> {
+            content(value.data)
+        }
+    }
+}
+
+@Composable
+fun <T, U> LoadingFlowContainer(
+    value: LoadingFlow<T>,
+    value2: LoadingFlow<U>,
+    content: @Composable (T, U) -> Unit,
+) {
+    if(value is LoadingFlow.Success && value2 is LoadingFlow.Success) {
+        content(value.data, value2.data)
+    } else {
+        LoadingFlowContent()
+    }
+}
+
+@Composable
+fun <T, U, V> LoadingFlowContainer(
+    value: LoadingFlow<T>,
+    value2: LoadingFlow<U>,
+    value3: LoadingFlow<V>,
+    content: @Composable (T, U, V) -> Unit,
+) {
+    if(value is LoadingFlow.Success && value2 is LoadingFlow.Success && value3 is LoadingFlow.Success) {
+        content(value.data, value2.data, value3.data)
+    } else {
+        LoadingFlowContent()
+    }
+}
+
 
 @Preview
 @Composable
 fun PlaceholderLoaderPreview() {
     FitCubeTheme {
         Surface {
-            PlaceholderLoader()
+            LoadingFlowContainer(LoadingFlow.Loading) {
+
+            }
         }
     }
 }

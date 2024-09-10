@@ -94,7 +94,7 @@ val OnLightCustomColorsPalette = CustomColorsPalette(
 )
 
 val OnDarkCustomColorsPalette = CustomColorsPalette(
-    unselectedContainer = Color(color = 0xFF1A237E),
+    unselectedContainer = Color(color = 0xFF919191),
 )
 
 @Composable

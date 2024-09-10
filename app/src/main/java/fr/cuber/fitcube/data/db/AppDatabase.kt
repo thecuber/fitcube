@@ -1,5 +1,6 @@
 package fr.cuber.fitcube.data.db
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -13,7 +14,10 @@ import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 
 @Database(
     entities = [ExerciseType::class, Workout::class, WorkoutExercise::class, Session::class],
-    version = 1
+    version = 5,
+    autoMigrations = [
+        AutoMigration(from = 4, to = 5)
+    ]
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase: RoomDatabase() {
@@ -22,6 +26,5 @@ abstract class AppDatabase: RoomDatabase() {
     abstract fun getWorkoutDao(): WorkoutDao
 
     abstract fun getSessionDao(): SessionDao
-
 
 }

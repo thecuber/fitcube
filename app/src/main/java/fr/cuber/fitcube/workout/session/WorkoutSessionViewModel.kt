@@ -11,9 +11,10 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cuber.fitcube.data.db.RoomRepository
 import fr.cuber.fitcube.data.db.entity.Session
+import fr.cuber.fitcube.data.db.success
 import fr.cuber.fitcube.utils.LoadingFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,8 +25,7 @@ class WorkoutSessionViewModel @Inject constructor(
 
     fun pauseAction() = binder.pauseAction()
 
-    private var _state = MutableStateFlow<LoadingFlow<SessionState>>(LoadingFlow.Loading)
-    val state: StateFlow<LoadingFlow<SessionState>> = _state
+    var state: Flow<LoadingFlow<SessionState>> = MutableStateFlow(LoadingFlow.Loading)
 
     fun setNextPrediction(prediction: List<Double>, index: Int) =
         binder.setNextPrediction(prediction, index)
@@ -36,8 +36,11 @@ class WorkoutSessionViewModel @Inject constructor(
     fun finishSession() {
         val state = binder.getValue()
         val m = HashMap<Int, List<Double>>()
-        for (e in state.workout.exercises) {
+        for ((i, e) in state.workout.exercises.withIndex()) {
             m[e.exercise.id] = e.exercise.prediction
+            viewModelScope.launch {
+                dbRepository.saveWorkoutExercise(e.exercise.copy(prediction = state.predictions[i]))
+            }
         }
         val session = Session(
             0,
@@ -57,12 +60,15 @@ class WorkoutSessionViewModel @Inject constructor(
     }
 
     fun closeService() {
+        state = MutableStateFlow(LoadingFlow.Loading)
         context.unbindService(connection)
         binder.finishService()
         closeScreen()//To change the screen
     }
 
     lateinit var closeScreen: () -> Unit
+
+    var trigger = MutableStateFlow(false)
 
 
     private lateinit var binder: WorkoutSessionService.ServiceBinder
@@ -75,10 +81,10 @@ class WorkoutSessionViewModel @Inject constructor(
             viewModelScope.launch {
                 if(workoutId > 0) {
                     binder.bindWorkout(dbRepository.getWorkoutSuspend(workoutId))
+                } else {
+                    trigger.value = true
                 }
-                binder.listenState().collect {
-                    _state.value = LoadingFlow.Success(it)
-                }
+                state = binder.listenState().success()
             }
             viewModelScope.launch {
                 binder.getEndTrigger().collect {

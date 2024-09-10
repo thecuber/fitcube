@@ -14,6 +14,7 @@ import fr.cuber.fitcube.exercise.choose.ExerciseChooseScreen
 import fr.cuber.fitcube.exercise.type.edit.ExerciseTypeEditScreen
 import fr.cuber.fitcube.exercise.workoutedit.WorkoutExerciseScreen
 import fr.cuber.fitcube.home.HomeScreen
+import fr.cuber.fitcube.settings.SettingsScreen
 import fr.cuber.fitcube.workout.info.WorkoutInfoScreen
 import fr.cuber.fitcube.workout.session.WorkoutSessionScreen
 
@@ -27,12 +28,17 @@ fun FitCubeNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
     ) {
         composable(FitCubeRoutes.HOME) {
             HomeScreen(
                 openWorkout = { task -> navActions.openWorkout(task) },
-                startWorkout = { task -> navActions.startWorkout(task) }
+                startWorkout = { task -> navActions.startWorkout(task) },
+                openExercise = { task -> navActions.editExerciseType(task) },
+                createExercise = {
+                    navActions.editExerciseType(0)
+                },
+                openSettings = {  navActions.openSettings() }
             )
         }
         composable(
@@ -96,6 +102,11 @@ fun FitCubeNavGraph(
             ExerciseTypeEditScreen(
                 onClose = { navController.popBackStack() },
                 id = id
+            )
+        }
+        composable(FitCubeRoutes.SETTINGS) {
+            SettingsScreen(
+                onClose = { navController.popBackStack() }
             )
         }
     }

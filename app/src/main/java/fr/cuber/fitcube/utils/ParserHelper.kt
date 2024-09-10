@@ -6,18 +6,18 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 
-fun showPrediction(prediction: List<Double>, msg: Boolean = false) = if(prediction.isNotEmpty()) { prediction.joinToString(separator = "lbs, ", postfix = "lbs") } else if (msg) { "Empty prediction" } else { "" }
+fun showPrediction(prediction: List<Double>, msg: Boolean = false) = if(prediction.isNotEmpty()) { prediction.joinToString(separator = "kgs, ", postfix = "kgs") } else if (msg) { "Empty prediction" } else { "" }
 
 fun boldPrediction(prediction: List<Double>, index: Int): String {
     return prediction.mapIndexed { i, value ->
-        if (i == index) "<b>${value}lbs</b>" else "${value}lbs"
+        if (i == index) "<b>${value}kgs</b>" else "${value}kgs"
     }.joinToString(separator = ", ")
 }
 
 fun textBoldPrediction(prediction: List<Double>, index: Int): AnnotatedString {
    return buildAnnotatedString {
         prediction.forEachIndexed { i, value ->
-            val text =  "${value}lbs"
+            val text =  "${value}kgs"
             withStyle(style = SpanStyle(fontWeight = if(i == index) FontWeight.Bold else FontWeight.Normal)) {
                 append(text)
             }

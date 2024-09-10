@@ -183,7 +183,7 @@ private fun ExerciseTypeEditScaffold(
                     "Create exercise"
                 } else {
                     "Edit exercise"
-                }, onClose = onClose, mapOf(Icons.Filled.Done to save)
+                }, onClose = onClose, actions = mapOf(Icons.Filled.Done to save)
             )
         },
 

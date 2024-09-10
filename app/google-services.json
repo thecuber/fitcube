@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "33925036820",
+    "project_id": "fitcube-cea71",
+    "storage_bucket": "fitcube-cea71.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:33925036820:android:1c8287466b0dd2eb09e001",
+        "android_client_info": {
+          "package_name": "fr.cuber.fitcube"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHaBwcVznsGkl-aD2mVeNc4Zw7LbzWJ1I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:0:android:0",
+        "android_client_info": {
+          "package_name": "fr.cuber.fitcube.debug"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "none"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}

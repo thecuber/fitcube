@@ -1,9 +1,9 @@
 package fr.cuber.fitcube.ui.theme
 import androidx.compose.ui.graphics.Color
 
-val primaryLight = Color(0xFF855400)
+val primaryLight = Color(0xFFEA3F01)
 val onPrimaryLight = Color(0xFFFFFFFF)
-val primaryContainerLight = Color(0xFFFFAB2E)
+val primaryContainerLight = Color(0xFFFF8F03)
 val onPrimaryContainerLight = Color(0xFF452900)
 val secondaryLight = Color(0xFF7D5724)
 val onSecondaryLight = Color(0xFFFFFFFF)

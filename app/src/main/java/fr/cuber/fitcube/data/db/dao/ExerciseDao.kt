@@ -1,5 +1,6 @@
 package fr.cuber.fitcube.data.db.dao
 
+import android.content.Context
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Embedded
@@ -11,8 +12,11 @@ import androidx.room.Transaction
 import androidx.room.Update
 import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
+import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.defaultExerciseType
 import fr.cuber.fitcube.data.db.entity.defaultWorkoutExercise
+import fr.cuber.fitcube.utils.WARMUP_ID
+import fr.cuber.fitcube.utils.getWarmupTime
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -51,6 +55,9 @@ interface ExerciseDao {
 
     @Query("DELETE FROM workout_exercises WHERE id IN (:ids)")
     suspend fun deleteExercises(ids: List<Int>)
+
+    @Query("DELETE FROM workout_exercises WHERE workoutId = :workoutId")
+    suspend fun deleteWorkout(workoutId: Int)
 }
 
 data class FullExercise(
@@ -63,6 +70,11 @@ data class FullExercise(
 )
 
 fun defaultFullExercise(id: Int) = FullExercise(
-    defaultWorkoutExercise(),
+    defaultWorkoutExercise(id),
     defaultExerciseType(id)
+)
+
+fun warmupExercise(start: Boolean, context: Context) = FullExercise(
+    defaultWorkoutExercise(0).copy(prediction = listOf(context.getWarmupTime()), mode = WorkoutMode.TIMED),
+    type = defaultExerciseType(WARMUP_ID).copy(name = if(start) { "Warmup" } else { "Stretching" }, description = "", image = listOf("png/warmup.png"))
 )

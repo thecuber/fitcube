@@ -27,7 +27,6 @@ class FitCubeActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val isServiceRunning = isServiceRunningInForeground(this, WorkoutSessionService::class.java)
         setContent {

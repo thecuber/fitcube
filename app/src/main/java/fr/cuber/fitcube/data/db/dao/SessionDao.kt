@@ -15,4 +15,10 @@ fun getSessionsByWorkoutId(id: Int): Flow<List<Session>>
 @Insert
 suspend fun createSession(session: Session)
 
+@Query("SELECT * FROM sessions")
+fun getSessions(): Flow<List<Session>>
+
+@Query("DELETE FROM sessions WHERE sessions.workoutId = :workoutId")
+suspend fun deleteSession(workoutId: Int)
+
 }

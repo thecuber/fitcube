@@ -19,4 +19,5 @@
         <item quantity="one">Last session :1 day ago</item>
         <item quantity="other">Last session : %d days ago</item>
     </plurals>
+    <string name="version">prod</string>
 </resources>

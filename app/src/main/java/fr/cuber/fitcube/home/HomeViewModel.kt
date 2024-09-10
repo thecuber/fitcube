@@ -4,9 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cuber.fitcube.data.db.RoomRepository
-import fr.cuber.fitcube.data.db.dao.HomeWorkout
 import fr.cuber.fitcube.data.db.entity.Workout
-import kotlinx.coroutines.flow.Flow
+import fr.cuber.fitcube.data.db.success
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -14,9 +13,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val repository: RoomRepository
 ) : ViewModel() {
-    fun getWorkouts(): Flow<List<HomeWorkout>> {
-        return repository.getWorkouts()
-    }
+    fun getWorkouts() = repository.getWorkouts().success()
 
     fun addWorkout(name: String) {
         viewModelScope.launch {
@@ -29,4 +26,9 @@ class HomeViewModel @Inject constructor(
             )
         }
     }
+
+    fun getExercises() = repository.getExerciseTypes().success()
+
+    fun getSessions() = repository.getSessions().success()
+
 }

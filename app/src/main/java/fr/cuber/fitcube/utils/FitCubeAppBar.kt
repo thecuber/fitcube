@@ -1,9 +1,11 @@
 package fr.cuber.fitcube.utils
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -16,12 +18,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.OutlinedButton
+import fr.cuber.fitcube.R
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 
 private val default: () -> Unit = {}
@@ -31,6 +35,7 @@ private val default: () -> Unit = {}
 fun FitCubeAppBar(
     title: String,
     onClose: () -> Unit = default,
+    icon: Boolean = false,
     actions: Map<ImageVector, () -> Unit> = emptyMap()
 ) {
     val close = (onClose !== default)
@@ -60,6 +65,9 @@ fun FitCubeAppBar(
                     Icon(imageVector = Icons.Rounded.Close, contentDescription = null)
                 }
             }
+            if(icon) {
+                Image(painter = painterResource(id = R.drawable.appicon), contentDescription = null, modifier = Modifier.size(42.dp).padding(start = 5.dp))
+            }
         },
         actions = {
             actions.forEach { (icon, action) ->
@@ -76,7 +84,7 @@ fun FitCubeAppBar(
 private fun FitCubeAppBarPreview() {
     FitCubeTheme {
         Surface {
-            FitCubeAppBar(title = "FitCube", onClose = {},
+            FitCubeAppBar(title = "FitCube", icon = true,
                 actions = mapOf(Icons.Rounded.Close to {})
             )
         }

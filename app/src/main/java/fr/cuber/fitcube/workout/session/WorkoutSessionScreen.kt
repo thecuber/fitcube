@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
@@ -64,15 +65,17 @@ import androidx.wear.compose.material.OutlinedButton
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
+import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.imagePreview
+import fr.cuber.fitcube.data.db.loadingCollect
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
-import fr.cuber.fitcube.utils.LoadingFlow
-import fr.cuber.fitcube.utils.PlaceholderLoaderPreview
+import fr.cuber.fitcube.utils.LoadingFlowContainer
 import fr.cuber.fitcube.utils.PredictionField
 import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.parseTimer
 import fr.cuber.fitcube.utils.showPrediction
+import kotlin.math.max
 
 
 @Composable
@@ -82,35 +85,29 @@ fun WorkoutSessionScreen(
     viewModel: WorkoutSessionViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val loadingState by viewModel.state.collectAsState(initial = LoadingFlow.Loading)
+    val loadingState by viewModel.state.loadingCollect()
     LaunchedEffect(key1 = Unit) {
         viewModel.onStart(context, workoutId, back)
     }
-    when (loadingState) {
-        is LoadingFlow.Loading -> {
-            PlaceholderLoaderPreview()
-        }
-
-        is LoadingFlow.Success -> {
-            val state = (loadingState as LoadingFlow.Success<SessionState>).data
-            WorkoutSessionScaffold(
-                state = state,
-                onPauseAction = {
-                    viewModel.pauseAction()
-                },
-                closeSession = {
-                    viewModel.closeService()
-                },
-                onRestChange = { viewModel.setRest(it) },
-                onCurrentWeightChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
-                onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) }
-            )
-        }
-
-        is LoadingFlow.Error -> TODO()
+    val trigger by viewModel.trigger.collectAsState()
+    LaunchedEffect(key1 = trigger) {
+        println("Recompile trigger: ${loadingState.toString()}")
     }
-
-
+    LoadingFlowContainer(value = loadingState) { state ->
+        println("State is loaded")
+        WorkoutSessionScaffold(
+            state = state,
+            onPauseAction = {
+                viewModel.pauseAction()
+            },
+            closeSession = {
+                viewModel.closeService()
+            },
+            onRestChange = { viewModel.setRest(it) },
+            onCurrentWeightChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
+            onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,7 +127,7 @@ fun WorkoutSessionScaffold(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = {
                     Text(
-                        state.workout.exercises.getOrNull(state.currentExercise)?.type?.name ?: "",
+                        state.current().type.name,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight(700)
                     )
@@ -203,13 +200,20 @@ fun WorkoutSessionContent(
     onCurrentWeightChange: (List<Double>, Int) -> Unit,
     onNextWeightChange: (List<Double>, Int) -> Unit
 ) {
-    val exerciseCount = state.workout.exercises.size
+    val exerciseCount = state.exerciseCount()
     val progress = if (exerciseCount > 0) {
         state.workout.exercises.mapIndexed { index, it ->
-            if (index < state.currentExercise) it.exercise.prediction.size
-            else if (index == state.currentExercise) state.currentSet
-            else 0
-        }.sum().toFloat() / state.workout.exercises.sumOf {
+            if (index < state.currentExercise) it.exercise.prediction.size.toFloat()
+            else if (index == state.currentExercise) {
+                var v = 0f
+                if(state.current().exercise.mode == WorkoutMode.TIMED && state.status == SessionStatus.TIMING) {
+                    val u = state.current().exercise.prediction[state.currentSet].toFloat()
+                    v = (u - max(state.timer, 0)) / u
+                }
+                state.currentSet + v
+            }
+            else 0f
+        }.sum() / state.workout.exercises.sumOf {
             it.exercise.prediction.size
         }.toFloat()
     } else {
@@ -225,8 +229,7 @@ fun WorkoutSessionContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             ExerciseIcon(
-                img = state.workout.exercises.getOrNull(state.currentExercise)?.type?.imagePreview()
-                    ?: "",
+                img = state.current().type.imagePreview(),
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
                     .aspectRatio(1f)
@@ -239,8 +242,7 @@ fun WorkoutSessionContent(
             exerciseIndex = state.currentExercise
         }
         WorkoutSessionWeights(
-            exercise = state.workout.exercises.getOrNull(state.currentExercise)
-                ?: defaultFullExercise(0),
+            exercise = state.current(),
             currentSet = state.currentSet,
             expanded = expanded,
             setExpanded = {
@@ -259,8 +261,7 @@ fun WorkoutSessionContent(
             paused = state.paused,
             timer = state.timer,
             currentSet = state.currentSet,
-            totalSets = state.workout.exercises.getOrNull(state.currentExercise)?.exercise?.prediction?.size
-                ?: 0,
+            totalSets = state.current().exercise.prediction.size,
             progress = progress,
             elapsedTime = state.elapsedTime,
             status = state.status,
@@ -312,7 +313,7 @@ fun WorkoutSessionWeights(
             .animateContentSize()
             .padding(10.dp)
             .clickable { setExpanded() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
     ) {
         Column(
             modifier = Modifier
@@ -333,28 +334,43 @@ fun WorkoutSessionWeights(
                 Spacer(modifier = Modifier.weight(1f))
                 val prediction = exercise.exercise.prediction
                 if (currentSet > 0) Text(
-                    "${prediction[currentSet - 1]}lbs",
+                    "${prediction[currentSet - 1]}kgs",
                     fontWeight = FontWeight(200)
                 )
                 Spacer(modifier = Modifier.padding(5.dp))
-                Text("${prediction[currentSet]}lbs", fontWeight = FontWeight.Bold)
+                Text("${prediction[currentSet]}kgs", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.padding(5.dp))
                 if (currentSet + 1 < prediction.size) Text(
-                    "${prediction[currentSet + 1]}lbs",
+                    "${prediction[currentSet + 1]}kgs",
                     fontWeight = FontWeight(200)
                 )
             }
+            var checked by remember { mutableStateOf(true) }
             if (expanded == Expanded.WEIGHTS) {
                 Text("Current session weights")
                 PredictionField(
-                    validPrediction = onCurrentWeightChange
+                    validPrediction = {
+                        onCurrentWeightChange(it)
+                        if(checked) onNextWeightChange(it)
+                    }
                 )
                 Spacer(modifier = Modifier.padding(5.dp))
-                Text("Next session weights")
-                PredictionField(
-                    validPrediction = onNextWeightChange
-                )
-                Spacer(modifier = Modifier.padding(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(checked = checked, onCheckedChange = {
+                        checked = it
+                    })
+                    Text("Use same weights for next session")
+                }
+                if(!checked) {
+                    Text("Next session weights")
+                    PredictionField(
+                        validPrediction = onNextWeightChange
+                    )
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
             }
         }
     }
@@ -397,15 +413,17 @@ fun WorkoutSessionActions(
 ) {
     val started = status != SessionStatus.START
     val progressAnimation by animateFloatAsState(
-        targetValue = progress,
+        targetValue = if(status == SessionStatus.DONE) 1f else progress,
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing), label = "",
     )
-    Column(modifier = modifier.clickable { setExpanded() }.padding(horizontal = 10.dp)) {
+    Column(modifier = modifier
+        .clickable { setExpanded() }
+        .padding(horizontal = 10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text(
                     text = when (status) {
-                        SessionStatus.START, SessionStatus.REST -> {
+                        SessionStatus.START, SessionStatus.REST, SessionStatus.TIMING -> {
                             parseTimer(timer)
                         }
                         SessionStatus.EXERCISE -> {

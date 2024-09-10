@@ -1,9 +1,9 @@
 package fr.cuber.fitcube.workout.info
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,8 +16,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -25,13 +29,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -40,19 +46,26 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
-import fr.cuber.fitcube.data.db.dao.defaultWorkoutWithExercises
 import fr.cuber.fitcube.data.db.entity.Session
 import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.defaultSession
 import fr.cuber.fitcube.data.db.entity.defaultWorkout
 import fr.cuber.fitcube.data.db.entity.imagePreview
+import fr.cuber.fitcube.data.db.loadingCollect
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.FitCubeAppBar
+import fr.cuber.fitcube.utils.LoadingFlow
+import fr.cuber.fitcube.utils.LoadingFlowContainer
 import fr.cuber.fitcube.utils.OutlinedTIButton
 import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.showPrediction
+import org.burnoutcrew.reorderable.ItemPosition
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -66,14 +79,16 @@ fun WorkoutInfoScreen(
     startWorkout: () -> Unit,
     viewModel: WorkoutInfoViewModel = hiltViewModel()
 ) {
-    val workoutExercises by viewModel.getWorkout(workoutId).collectAsState(
-        initial = defaultWorkoutWithExercises(5)
-    )
-    val sessions by viewModel.getSessions(workoutId).collectAsState(initial = emptyList())
-    WorkoutInfoScaffold(
+    //for time between delete and close
+    val workoutExercisesLoading by viewModel.getWorkout(workoutId).loadingCollect()
+    val sessionsLoading by viewModel.getSessions(workoutId).loadingCollect()
+    var loader: LoadingFlow<*> = LoadingFlow.Success(null)
+    LoadingFlowContainer(
+        workoutExercisesLoading, sessionsLoading, loader
+    ) { workoutExercises, sessions, _ -> WorkoutInfoScaffold(
         workout = workoutExercises.workout,
         startWorkout = startWorkout,
-        exercises = workoutExercises.exercises,
+        exercises = workoutExercises.exercises.sortedBy { if(workoutExercises.workout.order.isNotEmpty()) workoutExercises.workout.order.indexOf(it.exercise.id) else 0 },
         sessions = sessions,
         onClose = onClose,
         modifier = modifier,
@@ -83,10 +98,20 @@ fun WorkoutInfoScreen(
             println("Deleting $it")
             viewModel.deleteExercises(it) },
         deleteWorkout = {
+            loader = LoadingFlow.Loading
             viewModel.deleteWorkout(workoutId)
             onClose()
+        },
+        onMove = {
+            from, to -> viewModel.moveOrder(workoutExercises.workout.order.toMutableList().apply {
+            add(to.index, removeAt(from.index))
+        }, workoutId)
+        },
+        onUpdateWarmup = {
+            viewModel.updateWarmup(workoutId, it)
         }
     )
+    }
 }
 
 @Composable
@@ -100,8 +125,43 @@ fun WorkoutInfoScaffold(
     startWorkout: () -> Unit,
     modifier: Modifier = Modifier,
     onRemove: (List<Int>) -> Unit,
-    deleteWorkout: () -> Unit
+    deleteWorkout: () -> Unit,
+    onMove: (ItemPosition, ItemPosition) -> Unit,
+    onUpdateWarmup: (Int) -> Unit
 ) {
+    var delete by remember { mutableStateOf(false) }
+    if(delete) {
+        AlertDialog(
+            icon = {
+                Icon(Icons.Filled.Warning, contentDescription = "Example Icon")
+            },
+            title = {
+                Text(text = "Are you sure you want to delete the following workout ?")
+            },
+            onDismissRequest = {
+                delete = false
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleteWorkout()
+                        delete = false
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        delete = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
     Scaffold(
         topBar = {
             FitCubeAppBar(title = workout.name, onClose = onClose, actions = mapOf(Icons.Filled.Delete to deleteWorkout))
@@ -120,7 +180,10 @@ fun WorkoutInfoScaffold(
             exercises = exercises,
             sessions = sessions,
             onAdd = addExercise,
-            onRemove = onRemove
+            onRemove = onRemove,
+            onMove = onMove,
+            updateWarmup = onUpdateWarmup,
+            warmup = workout.warmup
         )
     }
 }
@@ -157,7 +220,6 @@ fun WorkoutInfoStatistics(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WorkoutInfoContent(
     openExercise: (WorkoutExercise) -> Unit,
@@ -166,8 +228,13 @@ fun WorkoutInfoContent(
     sessions: List<Session>,
     onAdd: () -> Unit,
     onRemove: (List<Int>) -> Unit,
+    onMove: (ItemPosition, ItemPosition) -> Unit,
+    updateWarmup: (Int) -> Unit,
+    warmup: Int
 ) {
+    var delete by remember { mutableStateOf(false) }
     val selection = remember { mutableStateOf(listOf<Int>()) }
+    val state = rememberReorderableLazyListState(onMove = onMove)
     Column(
         modifier = modifier
             .fillMaxSize(),
@@ -179,58 +246,80 @@ fun WorkoutInfoContent(
                 .padding(vertical = 10.dp, horizontal = 20.dp)
                 .fillMaxWidth()
         )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ){
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Warmup")
+                Checkbox(checked = (warmup and 1) > 0, onCheckedChange = {updateWarmup(warmup xor 1)})
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Stretching")
+                Checkbox(checked = (warmup and 2) > 0, onCheckedChange = {updateWarmup(warmup xor 2)})
+            }
+        }
         HorizontalDivider()
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            OutlinedTIButton(text = "Add exercise", onClick = onAdd, icon = Icons.Filled.Add)
-            OutlinedTIButton(
-                text = "Delete exercises",
-                onClick = {
-                    onRemove(selection.value)
+            OutlinedTIButton(text = if(delete) "Cancel" else "Add exercise", onClick = {
+                if(delete) {
                     selection.value = listOf()
+                    delete = false
+                }else {
+                    onAdd()
+                }
+            }, icon = if(delete) Icons.Filled.Cancel else Icons.Filled.Add)
+            OutlinedTIButton(
+                text = "Delete " + (if(delete) selection.value.size.toString() + " " else "") + "exercises",
+                onClick = {
+                    if(delete) {
+                        onRemove(selection.value)
+                        selection.value = listOf()
+                        delete = false
+                    } else {
+                        delete = true
+                    }
                 },
                 icon = Icons.Filled.Delete
             )
         }
-        LazyColumn {
-            items(exercises) {
-                WorkoutInfoExerciseItem(exercise = it, modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        if (selection.value.contains(it.exercise.id)) {
-                            Color.Gray
-                        } else {
-                            Color.Transparent
-                        }
-                    )
-                    .combinedClickable(
-                        onClick = {
-                            if (selection.value.isEmpty()) {
-                                openExercise(it.exercise)
-                            } else {
-                                if (selection.value.contains(it.exercise.id)) {
-                                    selection.value =
-                                        selection.value.filter { id -> id != it.exercise.id }
+
+        LazyColumn(
+            state = state.listState,
+            modifier = Modifier
+                .reorderable(state)
+                .detectReorderAfterLongPress(state)
+        ) {
+            items(exercises, { it.exercise.id }) { item ->
+                ReorderableItem(state, key = item) { isDragging ->
+                    val elevation = animateDpAsState(if (isDragging) 16.dp else 0.dp, label = "")
+                    Column(
+                        modifier = Modifier
+                            .shadow(elevation.value)
+                            .background(if(selection.value.contains(item.exercise.id)) Color.Gray else MaterialTheme.colorScheme.surface)
+                    ) {
+                        WorkoutInfoExerciseItem(exercise = item, modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if(delete) {
+                                    if(selection.value.contains(item.exercise.id)) {
+                                        selection.value = selection.value.filter { it != item.exercise.id }
+                                    } else {
+                                        selection.value += item.exercise.id
+                                    }
                                 } else {
-                                    selection.value += it.exercise.id
+                                    openExercise(item.exercise)
                                 }
                             }
-                        },
-                        onLongClick = {
-                            if (selection.value.isEmpty() || !selection.value.contains(it.exercise.id)) {
-                                selection.value += it.exercise.id
-                            } else {
-                                selection.value = selection.value.filter { id -> id != it.exercise.id }
-                            }
-                        }
-                    )
-                    .padding(horizontal = 20.dp))
-
+                            .padding(horizontal = 20.dp))
+                    }
+                }
             }
         }
-
     }
 }
 
@@ -244,7 +333,9 @@ fun WorkoutInfoExerciseItem(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = modifier.padding(vertical = 10.dp)
     ) {
-        Column {
+        Column(
+            modifier = Modifier.fillMaxWidth(0.8f)
+        ) {
             Text(exercise.type.name, fontWeight = FontWeight.Bold)
             Text(
                 fontStyle = FontStyle.Italic,
@@ -256,11 +347,10 @@ fun WorkoutInfoExerciseItem(
                 }
             )
         }
-        //FIXME NOT SAME SIZE
         ExerciseIcon(
             exercise.type.imagePreview(),
             Modifier
-                .fillMaxWidth(0.3f)
+                .fillMaxWidth(1f)
                 .aspectRatio(1f)
         )
     }
@@ -283,13 +373,16 @@ fun WorkoutInfoStatisticsPreview() {
 @Preview
 @Composable
 fun WorkoutInfoScaffoldPreview() {
+    var order by remember {
+        mutableStateOf(List(10) { it })
+    }
     FitCubeTheme {
         Surface {
             WorkoutInfoScaffold(
                 workout = defaultWorkout(),
                 exercises = List(10) {
                     defaultFullExercise(it)
-                },
+                }.sortedBy { order.indexOf(it.type.id) },
                 openExercise = {},
                 onClose = {},
                 addExercise = {},
@@ -298,7 +391,13 @@ fun WorkoutInfoScaffoldPreview() {
                     defaultSession()
                 },
                 onRemove = {},
-                deleteWorkout = {}
+                deleteWorkout = {},
+                onMove = { from, to ->
+                    order = order.toMutableList().apply {
+                        add(to.index, removeAt(from.index))
+                    }
+                },
+                onUpdateWarmup = {}
             )
         }
     }

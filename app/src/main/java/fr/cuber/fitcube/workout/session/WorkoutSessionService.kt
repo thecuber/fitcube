@@ -26,10 +26,15 @@ import androidx.core.app.NotificationManagerCompat
 import fr.cuber.fitcube.FitCubeActivity
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
+import fr.cuber.fitcube.data.db.dao.inflate
+import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.data.db.entity.imageStream
 import fr.cuber.fitcube.ui.theme.surfaceLight
+import fr.cuber.fitcube.utils.WARMUP_ID
 import fr.cuber.fitcube.utils.boldPrediction
+import fr.cuber.fitcube.utils.getSoundDelay
+import fr.cuber.fitcube.utils.getStartingTime
 import fr.cuber.fitcube.utils.parseTimer
 import fr.cuber.fitcube.workout.session.WorkoutSessionService.NotificationConstants.CHANNEL_ID
 import fr.cuber.fitcube.workout.session.WorkoutSessionService.NotificationConstants.NOTIFICATION_ID
@@ -73,34 +78,57 @@ class WorkoutSessionService : Service() {
          * Called once at startup, stores the workout
          */
         fun bindWorkout(workout: WorkoutWithExercises) {
+            val inflate = workout.inflate(context = applicationContext)
             _uiState.value = _uiState.value.copy(
-                workout = workout,
-                predictions = workout.exercises.map { it.exercise.prediction })
+                workout = inflate,
+                predictions = inflate.exercises.map { it.exercise.prediction },
+                rest = inflate.workout.rest,
+                timer = applicationContext.getStartingTime())
             updateNotification()
+        }
+
+        fun fakeBindWorkout() {
+            _uiState.value = _uiState.value.copy(rest = _uiState.value.rest + 1)
+        }
+
+        fun elapsedTick() {
+            _uiState.value = _uiState.value.copy(elapsedTime = _uiState.value.elapsedTime + 1000)
         }
 
         /**
          * Function called by the timer. Updates the values, and switch to the new set / exercise if needed
          */
         fun timerTick() {
-            _uiState.value = _uiState.value.copy(elapsedTime = _uiState.value.elapsedTime + 1000)
-            //if (_uiState.value.paused || _uiState.value.status == SessionStatus.EXERCISE) return This line should not be needed now
             _uiState.value = _uiState.value.copy(timer = _uiState.value.timer - 1)
+            if(_uiState.value.status == SessionStatus.TIMING) {
+                if(_uiState.value.timer == 0) {
+                    _uiState.value = _uiState.value.copy(timer = if(_uiState.value.current().type.id == WARMUP_ID) 30 else _uiState.value.rest, status = SessionStatus.REST)
+                    player.start()//Play sound
+                    postExerciseUpdate()
+                }
+                return
+            }
             if (_uiState.value.timer == 0) {
                 if (_uiState.value.status == SessionStatus.START) {
                     //If start, then we reset the starting time because of the time elapsed from the activity, loses 10 seconds on total time
                     _uiState.value = _uiState.value.copy(
-                        status = SessionStatus.EXERCISE,
                         started = System.currentTimeMillis(),
                         elapsedTime = 0
                     )
-                } else {
-                    _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
-                    //We play the sound
-                    player.start()
+                    startTotalTimer()
                 }
                 //In any case, we cancel the timer, because end of a "rest" (rest or first start)
                 cancelTimer()
+                _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
+                if(_uiState.value.current().exercise.mode == WorkoutMode.TIMED) {
+                    _uiState.value = _uiState.value.copy(timer = _uiState.value.current().exercise.prediction[_uiState.value.currentSet].toInt(), status = SessionStatus.TIMING)
+                    startTimer()
+                }
+
+            }
+            if(_uiState.value.timer == applicationContext.getSoundDelay() && _uiState.value.status != SessionStatus.START && _uiState.value.workout.workout.sound) {
+                //We play the sound
+                player.start()
             }
         }
 
@@ -108,13 +136,15 @@ class WorkoutSessionService : Service() {
          * Function called after an exercise is done, updates the count / set / status
          */
         private fun postExerciseUpdate() {
-            var set = getValue().currentSet + 1
-            var ex = getValue().currentExercise
-            if (set == getValue().workout.exercises[getValue().currentExercise].exercise.prediction.size) {
+            val value = getValue()
+            var set = value.currentSet + 1
+            var ex = value.currentExercise
+            if (set == value.current().exercise.prediction.size) {
                 set = 0
                 ex += 1
-                if (ex == getValue().workout.exercises.size) {
+                if (ex == value.exerciseCount()) {
                     _uiState.value = _uiState.value.copy(status = SessionStatus.DONE)
+                    cancelTimer() //If last thing was timing
                     return
                 }
             }
@@ -185,10 +215,15 @@ class WorkoutSessionService : Service() {
          */
         fun finishService() {
             cancelTimer()
+            elapsedTimer.cancel()
             binder._uiState.value = defaultSessionState(0)
             player.release()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
+        }
+
+        fun addRest() {
+            _uiState.value = _uiState.value.copy(timer = _uiState.value.timer + 15)
         }
 
     }
@@ -202,17 +237,27 @@ class WorkoutSessionService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder {
+        println("Calling onbind")
         ServiceBinderSingleton.binder = binder
         return binder
     }
 
     private var timer = Timer()
+    private val elapsedTimer = Timer()
     private var running = false//If the timer is running
 
     private fun cancelTimer() {
         running = false
         timer.cancel()
         timer = Timer()
+    }
+
+    fun startTotalTimer() {
+        elapsedTimer.schedule(object : java.util.TimerTask() {
+            override fun run() {
+                binder.elapsedTick()
+            }
+        }, 1000, 1000)
     }
 
     private fun startTimer() {
@@ -227,6 +272,7 @@ class WorkoutSessionService : Service() {
 
 
     override fun onCreate() {
+        println("Calling onCreate")
         super.onCreate()
         createNotificationChannel()
         binder.create()
@@ -246,7 +292,7 @@ class WorkoutSessionService : Service() {
             return vals.joinToString(" - ")
         }
 
-        val intent = PendingIntent.getBroadcast(
+        val pauseIntent = PendingIntent.getBroadcast(
             applicationContext,
             0,
             Intent(
@@ -257,9 +303,20 @@ class WorkoutSessionService : Service() {
             },
             PendingIntent.FLAG_IMMUTABLE
         )
+        val addIntent = PendingIntent.getBroadcast(
+            applicationContext,
+            1,
+            Intent(
+                applicationContext,
+                NotificationBroadcastReceiver::class.java
+            ).apply {
+                putExtra("MESSAGE", "REST")
+            },
+            PendingIntent.FLAG_IMMUTABLE
+        )
         var inputStream: InputStream? = null
         if(state.status != SessionStatus.DONE) {
-            inputStream = imageStream(state.workout.exercises[state.currentExercise].type.imagePreview(), applicationContext)
+            inputStream = imageStream(state.current().type.imagePreview(), applicationContext)
         }
         var bitmapTint: Bitmap? = null
         if (inputStream != null) {
@@ -279,17 +336,16 @@ class WorkoutSessionService : Service() {
         }
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setUsesChronometer(state.status != SessionStatus.START)
+            .setUsesChronometer(state.status != SessionStatus.START)
             .setWhen(state.started)
             .setOnlyAlertOnce(true)
-            .setColor(surfaceLight.toArgb())
-            .setColorized(true)
             .setContentText(
                 if(state.status == SessionStatus.DONE) {
                     "Click to modify the weights used"
                 } else {
                     Html.fromHtml(
                         boldPrediction(
-                            state.workout.exercises[state.currentExercise].exercise.prediction,
+                            state.current().exercise.prediction,
                             state.currentSet
                         ), Html.FROM_HTML_MODE_COMPACT
                     )
@@ -301,8 +357,8 @@ class WorkoutSessionService : Service() {
                 } else if (state.status == SessionStatus.EXERCISE) {
                     parsing(
                         listOf(
-                            "Set ${state.currentSet + 1}/${state.workout.exercises[state.currentExercise].exercise.prediction.size}",
-                            "${state.workout.exercises[state.currentExercise].type.name} (${state.currentExercise + 1}/${state.workout.exercises.size})"
+                            "Set ${state.currentSet + 1}/${state.current().exercise.prediction.size}",
+                            "${state.current().type.name} (${state.currentExercise + 1}/${state.exerciseCount()})"
                         )
                     )
                 } else if(state.status == SessionStatus.DONE) {
@@ -311,7 +367,7 @@ class WorkoutSessionService : Service() {
                     parsing(
                         listOf(
                             parseTimer(state.timer),
-                            "${state.workout.exercises[state.currentExercise].type.name} (${state.currentExercise + 1}/${state.workout.exercises.size})"
+                            "${state.current().type.name} (${state.currentExercise + 1}/${state.exerciseCount()})"
                         )
                     )
                 }
@@ -337,10 +393,14 @@ class WorkoutSessionService : Service() {
                     "Unpause"
                 } else {
                     "Pause"
-                }, intent
+                }, pauseIntent
             )
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .addAction(
+                0, "+15s", addIntent
+            )
+            .setSmallIcon(R.drawable.baseline_fitness_center_24)
+            .setStyle(NotificationCompat.BigTextStyle())
+            .setPriority(NotificationCompat.PRIORITY_MAX)
         with(NotificationManagerCompat.from(this)) {
             if (ActivityCompat.checkSelfPermission(
                     this@WorkoutSessionService,
@@ -377,8 +437,12 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val message = intent?.getStringExtra("MESSAGE")
         if (message != null) {
+            println(message)
             if (message == "PAUSE") {
                 WorkoutSessionService.ServiceBinderSingleton.binder.pauseAction()
+            }
+            else if(message == "REST") {
+                WorkoutSessionService.ServiceBinderSingleton.binder.addRest()
             }
         }
     }

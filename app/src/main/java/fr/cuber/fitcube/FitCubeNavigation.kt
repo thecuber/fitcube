@@ -3,10 +3,12 @@ package fr.cuber.fitcube
 import androidx.navigation.NavHostController
 import fr.cuber.fitcube.FitCubeRouteArgs.EXERCISE_ID
 import fr.cuber.fitcube.FitCubeRouteArgs.WORKOUT_ID
+import fr.cuber.fitcube.FitCubeRoutes.SETTINGS
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_CHOOSE_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_EDIT_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_TYPE_EDIT_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.HOME_SCREEN
+import fr.cuber.fitcube.FitCubeScreens.SETTINGS_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.WORKOUT_INFO_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.WORKOUT_SESSION_SCREEN
 
@@ -17,6 +19,7 @@ private object FitCubeScreens {
     const val EXERCISE_EDIT_SCREEN = "workout_exercise_edit"
     const val WORKOUT_SESSION_SCREEN = "workout_session"
     const val EXERCISE_TYPE_EDIT_SCREEN = "exercise_type_edit"
+    const val SETTINGS_SCREEN = "settings"
 }
 
 object FitCubeRouteArgs {
@@ -31,6 +34,7 @@ object FitCubeRoutes {
     const val EXERCISE_EDIT = "$EXERCISE_EDIT_SCREEN/{$EXERCISE_ID}"
     const val WORKOUT_SESSION = "$WORKOUT_SESSION_SCREEN/{$WORKOUT_ID}"
     const val EXERCISE_TYPE_EDIT = "$EXERCISE_TYPE_EDIT_SCREEN/{$EXERCISE_ID}"
+    const val SETTINGS = SETTINGS_SCREEN
 }
 
 fun sessionRoute(id: Int) = "${WORKOUT_SESSION_SCREEN}/$id"
@@ -54,6 +58,10 @@ class FitCubeNavigationActions(private val navHostController: NavHostController)
 
     fun editExerciseType(it: Int) {
         navHostController.navigate("${EXERCISE_TYPE_EDIT_SCREEN}/${it}")
+    }
+
+    fun openSettings() {
+        navHostController.navigate(SETTINGS)
     }
 
 }
