@@ -103,8 +103,10 @@ fun WorkoutInfoScreen(
             onClose()
         },
         onMove = {
-            from, to -> viewModel.moveOrder(workoutExercises.workout.order.toMutableList().apply {
-            add(to.index, removeAt(from.index))
+            from, to ->
+            viewModel.moveOrder(workoutExercises.workout.order.toMutableList().apply {
+                set(to.index, from.key as Int)
+                set(from.index, to.key as Int)
         }, workoutId)
         },
         onUpdateWarmup = {
@@ -394,7 +396,8 @@ fun WorkoutInfoScaffoldPreview() {
                 deleteWorkout = {},
                 onMove = { from, to ->
                     order = order.toMutableList().apply {
-                        add(to.index, removeAt(from.index))
+                        set(to.index, from.key as Int)
+                        set(from.index, to.key as Int)
                     }
                 },
                 onUpdateWarmup = {}

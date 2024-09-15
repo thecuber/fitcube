@@ -15,6 +15,7 @@ import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.defaultExerciseType
 import fr.cuber.fitcube.data.db.entity.defaultWorkoutExercise
+import fr.cuber.fitcube.utils.STRETCHING_ID
 import fr.cuber.fitcube.utils.WARMUP_ID
 import fr.cuber.fitcube.utils.getWarmupTime
 import kotlinx.coroutines.flow.Flow
@@ -74,7 +75,9 @@ fun defaultFullExercise(id: Int) = FullExercise(
     defaultExerciseType(id)
 )
 
+fun FullExercise.isWarmup() = (this.exercise.id == WARMUP_ID) || (this.exercise.id  == STRETCHING_ID)
+
 fun warmupExercise(start: Boolean, context: Context) = FullExercise(
-    defaultWorkoutExercise(0).copy(prediction = listOf(context.getWarmupTime()), mode = WorkoutMode.TIMED),
-    type = defaultExerciseType(WARMUP_ID).copy(name = if(start) { "Warmup" } else { "Stretching" }, description = "", image = listOf("png/warmup.png"))
+    defaultWorkoutExercise(if(start) WARMUP_ID else STRETCHING_ID).copy(prediction = listOf(context.getWarmupTime()), mode = WorkoutMode.TIMED),
+    type = defaultExerciseType(if(start) WARMUP_ID else STRETCHING_ID).copy(name = if(start) { "Warmup" } else { "Stretching" }, description = "", image = listOf("png/warmup.png"))
 )

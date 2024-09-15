@@ -4,29 +4,43 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Done
+import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +48,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -46,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
@@ -58,13 +74,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.wear.compose.material.ButtonDefaults
-import androidx.wear.compose.material.Icon
-import androidx.wear.compose.material.OutlinedButton
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
+import fr.cuber.fitcube.data.db.dao.isWarmup
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.data.db.loadingCollect
@@ -91,10 +106,9 @@ fun WorkoutSessionScreen(
     }
     val trigger by viewModel.trigger.collectAsState()
     LaunchedEffect(key1 = trigger) {
-        println("Recompile trigger: ${loadingState.toString()}")
+        println("Recompile trigger: $loadingState") //I guess i need this to have no bug w launching form notification ?
     }
     LoadingFlowContainer(value = loadingState) { state ->
-        println("State is loaded")
         WorkoutSessionScaffold(
             state = state,
             onPauseAction = {
@@ -105,7 +119,10 @@ fun WorkoutSessionScreen(
             },
             onRestChange = { viewModel.setRest(it) },
             onCurrentWeightChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
-            onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) }
+            onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) },
+            pushTop = { viewModel.pushTop(it) },
+            skipPause = { viewModel.skipPause() },
+            skipExercise = { viewModel.skipExercise(it) }
         )
     }
 }
@@ -119,7 +136,10 @@ fun WorkoutSessionScaffold(
     closeSession: () -> Unit,
     onRestChange: (Int) -> Unit,
     onCurrentWeightChange: (List<Double>, Int) -> Unit,
-    onNextWeightChange: (List<Double>, Int) -> Unit
+    onNextWeightChange: (List<Double>, Int) -> Unit,
+    pushTop: (Int) -> Unit,
+    skipPause: () -> Unit,
+    skipExercise: (Boolean) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -134,18 +154,18 @@ fun WorkoutSessionScaffold(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 actions = {
-                    OutlinedButton(
+                    IconButton(
                         onClick = closeSession,
-                        modifier = Modifier.padding(horizontal = 10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary,
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder(
-                            borderColor = MaterialTheme.colorScheme.primary,
-                            borderWidth = 2.dp
-                        )
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .padding(horizontal = 10.dp)
+                            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                     ) {
-                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "")
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )
@@ -157,7 +177,10 @@ fun WorkoutSessionScaffold(
             onPauseAction = onPauseAction,
             onRestChange = onRestChange,
             onCurrentWeightChange = onCurrentWeightChange,
-            onNextWeightChange = onNextWeightChange
+            onNextWeightChange = onNextWeightChange,
+            pushTop = pushTop,
+            skipPause = skipPause,
+            skipExercise = skipExercise
         )
     }
 }
@@ -169,7 +192,6 @@ fun WorkoutSessionContentPreview() {
         Surface {
             WorkoutSessionScaffold(
                 state = defaultSessionState(10).copy(
-                    currentSet = 1,
                     timer = 83,
                     elapsedTime = 1000 * (3600L + 23 * 60L + 45L)
                 ),
@@ -177,7 +199,10 @@ fun WorkoutSessionContentPreview() {
                 closeSession = {},
                 onRestChange = {},
                 onCurrentWeightChange = { a, b -> a + b },
-                onNextWeightChange = { a, b -> a + b }
+                onNextWeightChange = { a, b -> a + b },
+                pushTop = {},
+                skipPause = {},
+                skipExercise = {}
             )
         }
     }
@@ -198,19 +223,23 @@ fun WorkoutSessionContent(
     onPauseAction: () -> Unit,
     onRestChange: (Int) -> Unit,
     onCurrentWeightChange: (List<Double>, Int) -> Unit,
-    onNextWeightChange: (List<Double>, Int) -> Unit
+    onNextWeightChange: (List<Double>, Int) -> Unit,
+    pushTop: (Int) -> Unit,
+    skipPause: () -> Unit,
+    skipExercise: (Boolean) -> Unit
 ) {
     val exerciseCount = state.exerciseCount()
     val progress = if (exerciseCount > 0) {
-        state.workout.exercises.mapIndexed { index, it ->
+        state.workout.exercises.map {
+            val index = state.order.indexOf(it.exercise.id)
             if (index < state.currentExercise) it.exercise.prediction.size.toFloat()
             else if (index == state.currentExercise) {
                 var v = 0f
                 if(state.current().exercise.mode == WorkoutMode.TIMED && state.status == SessionStatus.TIMING) {
-                    val u = state.current().exercise.prediction[state.currentSet].toFloat()
+                    val u = state.current().exercise.prediction[state.currentSet()].toFloat()
                     v = (u - max(state.timer, 0)) / u
                 }
-                state.currentSet + v
+                state.currentSet() + v
             }
             else 0f
         }.sum() / state.workout.exercises.sumOf {
@@ -235,15 +264,10 @@ fun WorkoutSessionContent(
                     .aspectRatio(1f)
             )
         }
-        var exerciseIndex by remember {
-            mutableIntStateOf(state.currentExercise)
-        }
-        LaunchedEffect(key1 = state.currentExercise) {
-            exerciseIndex = state.currentExercise
-        }
         WorkoutSessionWeights(
-            exercise = state.current(),
-            currentSet = state.currentSet,
+            exercises = state.ordered(),
+            currentExercise = state.currentExercise,
+            currentSet = state.currentSet(),
             expanded = expanded,
             setExpanded = {
                 expanded = if (expanded == Expanded.WEIGHTS) {
@@ -252,15 +276,15 @@ fun WorkoutSessionContent(
                     Expanded.WEIGHTS
                 }
             },
-            onCurrentWeightChange = { onCurrentWeightChange(it, exerciseIndex) },
-            onNextWeightChange = { onNextWeightChange(it, exerciseIndex) }
+            onCurrentWeightChange = { a, b -> onCurrentWeightChange(a, b) },
+            onNextWeightChange = { a, b -> onNextWeightChange(a, b) }
         )
         WorkoutSessionActions(
             onPauseAction = onPauseAction,
             expanded = expanded,
             paused = state.paused,
             timer = state.timer,
-            currentSet = state.currentSet,
+            currentSet = state.currentSet(),
             totalSets = state.current().exercise.prediction.size,
             progress = progress,
             elapsedTime = state.elapsedTime,
@@ -274,14 +298,16 @@ fun WorkoutSessionContent(
                     Expanded.TIMER
                 }
             },
+            skipPause = skipPause,
+            skipExercise = skipExercise
         )
         if (state.currentExercise < exerciseCount - 1) {
             WorkoutSessionNextExercise(
-                exercises = state.workout.exercises,
+                exercises = state.ordered(),
                 exerciseIndex = state.currentExercise + 1,
                 exerciseCount = exerciseCount,
                 expanded = expanded,
-                onSwap = { a, b -> a + b },
+                pushTop = pushTop,
                 setExpanded = {
                     expanded = if (expanded == Expanded.EXERCISES) {
                         Expanded.DEFAULT
@@ -297,16 +323,24 @@ fun WorkoutSessionContent(
 
 @Composable
 fun WorkoutSessionWeights(
-    exercise: FullExercise,
+    exercises: List<FullExercise>,
+    currentExercise: Int,
     modifier: Modifier = Modifier,
     currentSet: Int,
     expanded: Expanded,
     setExpanded: () -> Unit,
-    onCurrentWeightChange: (List<Double>) -> Unit,
-    onNextWeightChange: (List<Double>) -> Unit
+    onCurrentWeightChange: (List<Double>, Int) -> Unit,
+    onNextWeightChange: (List<Double>, Int) -> Unit
 ) {
     //TODO animation for text slide
     //TODO Carousel to update all exercises
+    var index by remember {
+        mutableIntStateOf(0)
+    }
+    LaunchedEffect(key1 = currentExercise) {
+        index = currentExercise
+    }
+    val exercise = exercises[index]
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -347,11 +381,27 @@ fun WorkoutSessionWeights(
             }
             var checked by remember { mutableStateOf(true) }
             if (expanded == Expanded.WEIGHTS) {
-                Text("Current session weights")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IconButton(onClick = {
+                        index -= 1
+                    }, enabled = index > 0) {
+                        Icon(imageVector = Icons.Default.ChevronLeft, contentDescription = null)
+                    }
+                    Text(exercise.type.name)
+                    IconButton(onClick = {
+                        index += 1
+                    }, enabled = index < exercises.size - 1) {
+                        Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null)
+                    }
+                }
                 PredictionField(
                     validPrediction = {
-                        onCurrentWeightChange(it)
-                        if(checked) onNextWeightChange(it)
+                        onCurrentWeightChange(it, index)
+                        if(checked) onNextWeightChange(it, index)
                     }
                 )
                 Spacer(modifier = Modifier.padding(5.dp))
@@ -367,7 +417,7 @@ fun WorkoutSessionWeights(
                 if(!checked) {
                     Text("Next session weights")
                     PredictionField(
-                        validPrediction = onNextWeightChange
+                        validPrediction = { onNextWeightChange(it, index) }
                     )
                     Spacer(modifier = Modifier.padding(10.dp))
                 }
@@ -382,12 +432,13 @@ fun WorkoutSessionWeightsPreview() {
     FitCubeTheme(false) {
         Surface {
             WorkoutSessionWeights(
-                defaultFullExercise(0),
+                exercises = List(10) { defaultFullExercise(it) },
+                currentExercise = 0,
                 currentSet = 0,
                 expanded = Expanded.WEIGHTS,
                 setExpanded = {},
-                onCurrentWeightChange = {},
-                onNextWeightChange = {})
+                onCurrentWeightChange = { _, _ ->},
+                onNextWeightChange = {_, _ -> })
         }
     }
 }
@@ -409,8 +460,65 @@ fun WorkoutSessionActions(
     progress: Float,
     elapsedTime: Long,
     modifier: Modifier = Modifier,
-    setExpanded: () -> Unit
+    setExpanded: () -> Unit,
+    skipPause: () -> Unit,
+    skipExercise: (Boolean) -> Unit
 ) {
+    var openedDialog by remember {
+        mutableStateOf(false)
+    }
+    if(openedDialog) {
+        Dialog(onDismissRequest = { openedDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .height(150.dp)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "Skipping exercise:",
+                        modifier = Modifier.padding(16.dp),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                skipExercise(false)
+                                openedDialog = false
+                          },
+                            modifier = Modifier.padding(8.dp),
+                        ) {
+                            Text("Only one series")
+                        }
+                        TextButton(
+                            onClick = {
+                                skipExercise(true)
+                                openedDialog = false
+                            },
+                            modifier = Modifier.padding(8.dp),
+                        ) {
+                            Text("All remaining")
+                        }
+                        TextButton(
+                            onClick = { openedDialog = false },
+                            modifier = Modifier.padding(8.dp),
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+            }
+        }
+    }
     val started = status != SessionStatus.START
     val progressAnimation by animateFloatAsState(
         targetValue = if(status == SessionStatus.DONE) 1f else progress,
@@ -448,6 +556,22 @@ fun WorkoutSessionActions(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
+            FilledIconButton(
+                onClick = { 
+                    if(status == SessionStatus.REST) {
+                        skipPause()
+                    } else if(currentSet == totalSets - 1){
+                        skipExercise(false)
+                    } else {
+                        openedDialog = true
+                    }
+                },
+                modifier = Modifier.size(55.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.LightGray)
+            ) {
+                Icon(imageVector = Icons.Rounded.SkipNext, contentDescription = "")
+            }
+            Spacer(modifier = Modifier.padding(horizontal = 5.dp))
             FilledIconButton(
                 onClick = onPauseAction,
                 modifier = Modifier.size(55.dp)
@@ -512,7 +636,9 @@ fun WorkoutSessionActionsPreview() {
                 expanded = Expanded.TIMER,
                 rest = 30,
                 setRest = {},
-                setExpanded = {}
+                setExpanded = {},
+                skipPause = {},
+                skipExercise = {}
             )
         }
     }
@@ -526,16 +652,16 @@ fun WorkoutSessionNextExercise(
     exerciseIndex: Int,
     exerciseCount: Int,
     exercises: List<FullExercise>,
-    onSwap: (Int, Int) -> Unit
+    pushTop: (Int) -> Unit
 ) {
-    //TODO Add swap mechanic
     var mod = modifier
-        .padding(10.dp)
         .fillMaxWidth()
         .animateContentSize()
         .clickable { setExpanded() }
-    if (expanded == Expanded.EXERCISES) {
-        mod = mod.fillMaxHeight(0.3f)
+    mod = if (expanded == Expanded.EXERCISES) {
+        mod.fillMaxHeight(0.3f)
+    } else {
+        mod.padding(10.dp)
     }
     Column(
         modifier = mod,
@@ -549,26 +675,53 @@ fun WorkoutSessionNextExercise(
             )
             HorizontalDivider()
             LazyColumn {
-                itemsIndexed(exercises.subList(exerciseIndex, exerciseCount)) { id, exercise ->
+                itemsIndexed(exercises.subList(exerciseIndex, exerciseCount)) { index, exercise ->
+                    val enabled = !exercise.isWarmup() and !exercises[exerciseIndex - 1].isWarmup()
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 5.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .height(IntrinsicSize.Min) // Add this line
                     ) {
-                        Column {
-                            Text("${exercise.type.name} (${exerciseIndex + 1 + id}/$exerciseCount)")
-                            Text(
-                                showPrediction(exercise.exercise.prediction),
-                                fontStyle = FontStyle.Italic,
-                                fontSize = 14.sp
+                        Row(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .background(if (enabled) Color.LightGray else Color(0xFFDEDEDE))
+                                .clickable(
+                                    enabled = enabled
+                                ) {
+                                    pushTop(exercise.exercise.id)
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.KeyboardDoubleArrowUp,
+                                contentDescription = null,
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                tint = if(enabled) Color.Black else Color.Gray
                             )
                         }
-                        ExerciseIcon(
-                            img = exercise.type.imagePreview(), modifier = Modifier
-                                .fillMaxWidth(0.25f)
-                                .aspectRatio(1f)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column{
+                                Text("${exercise.type.name} (${exerciseIndex + 1 + index}/$exerciseCount)")
+                                Text(
+                                    showPrediction(exercise.exercise.prediction),
+                                    fontStyle = FontStyle.Italic,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            ExerciseIcon(
+                                img = exercise.type.imagePreview(), modifier = Modifier
+                                    .fillMaxWidth(0.4f)
+                                    .aspectRatio(1f)
+                            )
+                        }
                     }
                     HorizontalDivider()
                 }
@@ -608,18 +761,14 @@ fun WorkoutSessionNextExercisePreview() {
     FitCubeTheme {
         Surface {
             WorkoutSessionNextExercise(
-                modifier = Modifier.padding(10.dp),
                 exerciseCount = 10,
                 exerciseIndex = 1,
-                expanded = Expanded.DEFAULT,
+                expanded = Expanded.EXERCISES,
                 setExpanded = {},
                 exercises = List(10) { defaultFullExercise(it) },
-                onSwap = { a, b -> a + b }
+                pushTop = {}
             )
         }
     }
 }
-
-
-
 

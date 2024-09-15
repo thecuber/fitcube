@@ -114,5 +114,17 @@ class WorkoutSessionViewModel @Inject constructor(
         this.closeScreen = close
     }
 
+    fun pushTop(index: Int) {
+        binder.pushTop(index)
+    }
+
+    fun skipPause() {
+        binder.skipPause()
+    }
+
+    fun skipExercise(full: Boolean) {
+        binder.skipExercise(full)
+    }
+
 
 }

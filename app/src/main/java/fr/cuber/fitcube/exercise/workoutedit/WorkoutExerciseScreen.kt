@@ -116,7 +116,7 @@ fun WorkoutExerciseContent(
     exercise: FullExercise,
     setExercise: (FullExercise) -> Unit
 ) {
-    val regexPattern = "(\\d+x\\d+\\s?)+"
+    val regexPattern = "(\\d+x\\d+(.\\d+)?\\s?)+"
     var prediction by remember { mutableStateOf("") }
     var validParsing by remember {
         mutableStateOf(

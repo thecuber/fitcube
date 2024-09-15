@@ -2,15 +2,18 @@ package fr.cuber.fitcube.utils
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -27,8 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.material.Button
-import androidx.wear.compose.material.ButtonDefaults
+import androidx.compose.ui.zIndex
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 
 
@@ -38,7 +40,7 @@ fun PredictionField(
     validPrediction: (List<Double>) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
-    val regexPattern = "(\\d+x\\d+\\s?)+"
+    val regexPattern = "(\\d+x\\d+(.\\d+)?\\s?)+"
     var validParsing by remember {
         mutableStateOf(
             false
@@ -70,10 +72,14 @@ fun PredictionField(
                 modifier = Modifier
                     .weight(1f)
             )
-            Button(
+            Spacer(modifier = Modifier.padding(5.dp))
+            FilledIconButton(
                 onClick = { validPrediction(parsePrediction(text))},
-                enabled = validParsing, modifier = Modifier.padding(start = 10.dp, top = 5.dp),
-                shape = RoundedCornerShape(50)
+                enabled = validParsing,
+                modifier = Modifier
+                    .size(55.dp)
+                    .zIndex(10F),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.LightGray)
             ) {
                 Icon(imageVector = Icons.Filled.Done, contentDescription = "")
             }

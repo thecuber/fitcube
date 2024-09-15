@@ -57,7 +57,11 @@ import fr.cuber.fitcube.data.db.dao.defaultHomeWorkout
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.ui.theme.customColors
 import fr.cuber.fitcube.utils.parseDuration
-import java.util.Date
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun WorkoutList(
@@ -146,8 +150,16 @@ fun WorkoutListItem(
                 Text(name, fontWeight = FontWeight(700), fontSize = 20.sp)
                 Text(
                     text = if (date != null) {
-                        val t = ((Date().time - date) / (3600 * 24 * 1000)).toInt()
-                        pluralStringResource(id = R.plurals.last_workout_session, t, t)
+                        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        val last = Instant.fromEpochMilliseconds(date).toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        val days = last.daysUntil(today)
+                        if(days > 1) {
+                            pluralStringResource(id = R.plurals.last_workout_session, days, days)
+                        } else if (days == 0){
+                            "Last session: Today"
+                        } else {
+                            "Last session: Yesterday"
+                        }
                     } else stringResource(id = R.string.no_workout_session),
                     fontStyle = FontStyle.Italic
                 )

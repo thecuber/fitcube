@@ -60,7 +60,7 @@ data class HomeWorkout(
 
 fun defaultHomeWorkout(id: Int) = HomeWorkout(
     workout = defaultWorkout(id),
-    date = System.currentTimeMillis(),
+    date = System.currentTimeMillis() - id * (3600 * 1000 * 24),
     estimated = 1000 * (83),
     exerciseCount = 3
 )
@@ -78,7 +78,7 @@ data class WorkoutWithExercises(
 fun defaultWorkoutWithExercises(size: Int) = WorkoutWithExercises(
     workout = defaultWorkout(),
     exercises = List(size) {
-        defaultFullExercise(it + 1)
+        defaultFullExercise(it)
     }
 )
 

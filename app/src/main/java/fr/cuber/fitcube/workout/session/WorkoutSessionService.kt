@@ -27,10 +27,14 @@ import fr.cuber.fitcube.FitCubeActivity
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
 import fr.cuber.fitcube.data.db.dao.inflate
+import fr.cuber.fitcube.data.db.dao.isWarmup
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
+import fr.cuber.fitcube.data.db.entity.endWarmup
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.data.db.entity.imageStream
+import fr.cuber.fitcube.data.db.entity.startWarmup
 import fr.cuber.fitcube.ui.theme.surfaceLight
+import fr.cuber.fitcube.utils.STRETCHING_ID
 import fr.cuber.fitcube.utils.WARMUP_ID
 import fr.cuber.fitcube.utils.boldPrediction
 import fr.cuber.fitcube.utils.getSoundDelay
@@ -79,16 +83,26 @@ class WorkoutSessionService : Service() {
          */
         fun bindWorkout(workout: WorkoutWithExercises) {
             val inflate = workout.inflate(context = applicationContext)
+            val inflateOrder = workout.workout.order.toMutableList().apply {
+                if(workout.workout.order.isEmpty()) {
+                    addAll(inflate.exercises.map { it.exercise.id })
+                } else {
+                    if(workout.workout.startWarmup()) {
+                        add(0, WARMUP_ID)
+                    }
+                    if(workout.workout.endWarmup()) {
+                        add(STRETCHING_ID)
+                    }
+                }
+            }
             _uiState.value = _uiState.value.copy(
                 workout = inflate,
                 predictions = inflate.exercises.map { it.exercise.prediction },
                 rest = inflate.workout.rest,
+                order = inflateOrder,
+                sets = inflateOrder.associateWith { 0 }.toMap(),
                 timer = applicationContext.getStartingTime())
             updateNotification()
-        }
-
-        fun fakeBindWorkout() {
-            _uiState.value = _uiState.value.copy(rest = _uiState.value.rest + 1)
         }
 
         fun elapsedTick() {
@@ -101,10 +115,9 @@ class WorkoutSessionService : Service() {
         fun timerTick() {
             _uiState.value = _uiState.value.copy(timer = _uiState.value.timer - 1)
             if(_uiState.value.status == SessionStatus.TIMING) {
-                if(_uiState.value.timer == 0) {
-                    _uiState.value = _uiState.value.copy(timer = if(_uiState.value.current().type.id == WARMUP_ID) 30 else _uiState.value.rest, status = SessionStatus.REST)
+                if(_uiState.value.timer == 0 && !postExerciseUpdate()) {
+                    _uiState.value = _uiState.value.copy(timer = if(_uiState.value.current().isWarmup()) 30 else _uiState.value.rest, status = SessionStatus.REST)
                     player.start()//Play sound
-                    postExerciseUpdate()
                 }
                 return
             }
@@ -121,7 +134,7 @@ class WorkoutSessionService : Service() {
                 cancelTimer()
                 _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
                 if(_uiState.value.current().exercise.mode == WorkoutMode.TIMED) {
-                    _uiState.value = _uiState.value.copy(timer = _uiState.value.current().exercise.prediction[_uiState.value.currentSet].toInt(), status = SessionStatus.TIMING)
+                    _uiState.value = _uiState.value.copy(timer = _uiState.value.current().exercise.prediction[_uiState.value.currentSet()].toInt(), status = SessionStatus.TIMING)
                     startTimer()
                 }
 
@@ -134,24 +147,26 @@ class WorkoutSessionService : Service() {
 
         /**
          * Function called after an exercise is done, updates the count / set / status
+         * Returns true if the workout is finished
          */
-        private fun postExerciseUpdate() {
+        private fun postExerciseUpdate(): Boolean {
             val value = getValue()
-            var set = value.currentSet + 1
+            val set = value.currentSet() + 1
             var ex = value.currentExercise
             if (set == value.current().exercise.prediction.size) {
-                set = 0
                 ex += 1
                 if (ex == value.exerciseCount()) {
                     _uiState.value = _uiState.value.copy(status = SessionStatus.DONE)
-                    cancelTimer() //If last thing was timing
-                    return
+                    return true
                 }
             }
             _uiState.value = _uiState.value.copy(
                 currentExercise = ex,
-                currentSet = set
+                sets = value.sets.toMutableMap().apply {
+                    set(value.order[value.currentExercise], set)
+                }
             )
+            return false
         }
 
         /**
@@ -186,10 +201,10 @@ class WorkoutSessionService : Service() {
                 return
             }
             if (_uiState.value.status == SessionStatus.EXERCISE) {
-                //This can be a rest
-                _uiState.value =
-                    _uiState.value.copy(timer = _uiState.value.rest, status = SessionStatus.REST)
-                postExerciseUpdate()
+                if(!postExerciseUpdate()) {
+                    _uiState.value =
+                        _uiState.value.copy(timer = if(_uiState.value.current().isWarmup()) 15 else _uiState.value.rest, status = SessionStatus.REST)
+                }
             } else {
                 _uiState.value = _uiState.value.copy(paused = _uiState.value.paused.not())
             }
@@ -226,6 +241,44 @@ class WorkoutSessionService : Service() {
             _uiState.value = _uiState.value.copy(timer = _uiState.value.timer + 15)
         }
 
+        fun pushTop(id: Int) {
+            _uiState.value = _uiState.value.copy(order = _uiState.value.order.toMutableList().apply {
+                val index = this.indexOf(id)
+                set(index, this[_uiState.value.currentExercise])
+                set(_uiState.value.currentExercise, id)
+            })
+        }
+
+        /**
+         * Skip the current pause
+         */
+        fun skipPause() {
+            cancelTimer()
+            val current = _uiState.value.current()
+            if(current.exercise.mode == WorkoutMode.TIMED) {
+                _uiState.value = _uiState.value.copy(timer = _uiState.value.currentSet(), status = SessionStatus.TIMING)
+                startTimer()
+            } else {
+                _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
+            }
+        }
+
+        /**
+         * Skips the current set, full indicates if we skip the whole exercise or only this set
+         */
+        fun skipExercise(full: Boolean) {
+            if(_uiState.value.status == SessionStatus.TIMING) {
+                _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
+                cancelTimer()
+            }
+            if(full) {
+                _uiState.value = _uiState.value.copy(sets = _uiState.value.sets.toMutableMap().apply {
+                    set(_uiState.value.current().exercise.id, _uiState.value.current().exercise.prediction.size - 1)
+                })
+            }
+            pauseAction()
+        }
+
     }
 
     //The binder object to communicate with
@@ -237,7 +290,6 @@ class WorkoutSessionService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder {
-        println("Calling onbind")
         ServiceBinderSingleton.binder = binder
         return binder
     }
@@ -261,6 +313,7 @@ class WorkoutSessionService : Service() {
     }
 
     private fun startTimer() {
+        //TODO Try to see why this does not work sometimes
         running = true
         timer.schedule(object : java.util.TimerTask() {
             override fun run() {
@@ -346,7 +399,7 @@ class WorkoutSessionService : Service() {
                     Html.fromHtml(
                         boldPrediction(
                             state.current().exercise.prediction,
-                            state.currentSet
+                            state.currentSet()
                         ), Html.FROM_HTML_MODE_COMPACT
                     )
                 }
@@ -357,7 +410,7 @@ class WorkoutSessionService : Service() {
                 } else if (state.status == SessionStatus.EXERCISE) {
                     parsing(
                         listOf(
-                            "Set ${state.currentSet + 1}/${state.current().exercise.prediction.size}",
+                            "Set ${state.currentSet() + 1}/${state.current().exercise.prediction.size}",
                             "${state.current().type.name} (${state.currentExercise + 1}/${state.exerciseCount()})"
                         )
                     )

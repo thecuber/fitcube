@@ -19,6 +19,7 @@ const val SOUND_DELAY = 10
 const val WARMUP_DELAY_PROD = 60.0
 const val WARMUP_DELAY_DEV = 5.0
 const val WARMUP_ID = -314
+const val STRETCHING_ID = -315
 
 fun Context.isProd(): Boolean {
     return this.getString(R.string.version) == "prod"

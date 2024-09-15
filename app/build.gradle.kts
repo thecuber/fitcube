@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.hilt)
     kotlin("kapt")
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.googleServices)
+    alias(libs.plugins.crashlytics)
 }
 
 android {
@@ -15,8 +17,8 @@ android {
         applicationId = "fr.cuber.fitcube"
         minSdk = 29
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -30,6 +32,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            manifestPlaceholders["appName"] = "Fitcube"
+            manifestPlaceholders["appIcon"] = "@drawable/appicon"
+            resValue("string", "version", "prod")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -66,19 +71,15 @@ android {
             manifestPlaceholders["appName"] = "Fitcube"
             manifestPlaceholders["appIcon"] = "@drawable/appicon"
             resValue("string", "version", "prod")
-            apply(plugin = "com.google.gms.google-services")
-            apply(plugin = "com.google.firebase.crashlytics")
-            dependencies {
-                implementation(platform(libs.firebase.bom))
-                implementation(libs.firebase.crashlytics)
-                implementation(libs.firebase.analytics)
-            }
         }
     }
 }
 
 dependencies {
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.activity.compose)
@@ -93,6 +94,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.material)
 
+    implementation(libs.kotlinx.datetime)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
