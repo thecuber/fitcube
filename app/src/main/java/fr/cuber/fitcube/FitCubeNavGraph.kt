@@ -38,7 +38,7 @@ fun FitCubeNavGraph(
                 createExercise = {
                     navActions.editExerciseType(0)
                 },
-                openSettings = {  navActions.openSettings() }
+                openSettings = { navActions.openSettings() }
             )
         }
         composable(
@@ -90,7 +90,11 @@ fun FitCubeNavGraph(
         ) { entry ->
             val id = entry.arguments?.getInt(WORKOUT_ID)!!
             WorkoutSessionScreen(
-                back = { navController.popBackStack() },
+                back = {
+                    if (!navController.popBackStack()) {
+                        navActions.openHome()
+                    }
+                },
                 workoutId = id
             )
         }

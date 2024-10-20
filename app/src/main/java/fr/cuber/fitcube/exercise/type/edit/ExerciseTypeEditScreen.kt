@@ -73,7 +73,6 @@ fun ExerciseTypeEditScreen(
     id: Int,
     onClose: () -> Unit
 ) {
-    println("Opening edit for $id")
     var updatedId by remember {
         mutableIntStateOf(id)
     }

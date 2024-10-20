@@ -3,6 +3,7 @@ package fr.cuber.fitcube
 import androidx.navigation.NavHostController
 import fr.cuber.fitcube.FitCubeRouteArgs.EXERCISE_ID
 import fr.cuber.fitcube.FitCubeRouteArgs.WORKOUT_ID
+import fr.cuber.fitcube.FitCubeRoutes.HOME
 import fr.cuber.fitcube.FitCubeRoutes.SETTINGS
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_CHOOSE_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_EDIT_SCREEN
@@ -62,6 +63,10 @@ class FitCubeNavigationActions(private val navHostController: NavHostController)
 
     fun openSettings() {
         navHostController.navigate(SETTINGS)
+    }
+
+    fun openHome() {
+        navHostController.navigate(HOME)
     }
 
 }

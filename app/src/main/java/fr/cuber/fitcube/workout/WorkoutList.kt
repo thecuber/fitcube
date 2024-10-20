@@ -95,7 +95,7 @@ fun WorkoutList(
         modifier = modifier.fillMaxSize()
     ) {
         WorkoutListContent(
-            homeWorkouts = workouts,
+            homeWorkouts = workouts.sortedBy { it.date },
             selected = selected,
             onSessionSelected = {
                 selected = it

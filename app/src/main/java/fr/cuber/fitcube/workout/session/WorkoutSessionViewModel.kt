@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,11 +36,17 @@ class WorkoutSessionViewModel @Inject constructor(
 
     fun finishSession() {
         val state = binder.getValue()
+        //Debug for now
+        if(state.started == 0L) {
+            Toast.makeText(context, "Saving but no date", Toast.LENGTH_SHORT).show()
+            closeService()
+            return
+        }
         val m = HashMap<Int, List<Double>>()
-        for ((i, e) in state.workout.exercises.withIndex()) {
+        for (e in state.workout.exercises) {
             m[e.exercise.id] = e.exercise.prediction
             viewModelScope.launch {
-                dbRepository.saveWorkoutExercise(e.exercise.copy(prediction = state.predictions[i]))
+                dbRepository.saveWorkoutExercise(e.exercise.copy(prediction = state.predictions[e.exercise.id]!!))
             }
         }
         val session = Session(
@@ -88,6 +95,8 @@ class WorkoutSessionViewModel @Inject constructor(
             }
             viewModelScope.launch {
                 binder.getEndTrigger().collect {
+                    println("End trigger ? $it")
+                    //This occurs even when closed from the screen
                     if(it) {
                         finishSession()
                     }

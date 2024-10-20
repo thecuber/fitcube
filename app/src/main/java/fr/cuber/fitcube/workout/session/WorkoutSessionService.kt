@@ -97,7 +97,7 @@ class WorkoutSessionService : Service() {
             }
             _uiState.value = _uiState.value.copy(
                 workout = inflate,
-                predictions = inflate.exercises.map { it.exercise.prediction },
+                predictions = inflate.exercises.associate { it.exercise.id to it.exercise.prediction },
                 rest = inflate.workout.rest,
                 order = inflateOrder,
                 sets = inflateOrder.associateWith { 0 }.toMap(),
@@ -115,8 +115,9 @@ class WorkoutSessionService : Service() {
         fun timerTick() {
             _uiState.value = _uiState.value.copy(timer = _uiState.value.timer - 1)
             if(_uiState.value.status == SessionStatus.TIMING) {
+                val bfWarmup = _uiState.value.current().isWarmup()
                 if(_uiState.value.timer == 0 && !postExerciseUpdate()) {
-                    _uiState.value = _uiState.value.copy(timer = if(_uiState.value.current().isWarmup()) 30 else _uiState.value.rest, status = SessionStatus.REST)
+                    _uiState.value = _uiState.value.copy(timer = if(_uiState.value.current().isWarmup() || bfWarmup) 30 else _uiState.value.rest, status = SessionStatus.REST)
                     player.start()//Play sound
                 }
                 return
@@ -173,7 +174,7 @@ class WorkoutSessionService : Service() {
          * Updates the prediction for next time
          */
         fun setNextPrediction(prediction: List<Double>, index: Int) {
-            val predictions = _uiState.value.predictions.toMutableList()
+            val predictions = _uiState.value.predictions.toMutableMap()
             predictions[index] = prediction
             _uiState.value = _uiState.value.copy(predictions = predictions)
         }
@@ -183,13 +184,15 @@ class WorkoutSessionService : Service() {
          */
         fun setCurrentPrediction(prediction: List<Double>, index: Int) {
             _uiState.value =
-                _uiState.value.copy(workout = _uiState.value.workout.copy(exercises = _uiState.value.workout.exercises.mapIndexed { i, fullExercise ->
+                _uiState.value.copy(workout = _uiState.value.workout.copy(exercises = _uiState.value.ordered().mapIndexed { i, fullExercise ->
                     if (index == i) {
                         fullExercise.copy(exercise = fullExercise.exercise.copy(prediction = prediction))
                     } else {
                         fullExercise
                     }
                 }))
+
+            updateNotification()
         }
 
         /**
@@ -201,9 +204,11 @@ class WorkoutSessionService : Service() {
                 return
             }
             if (_uiState.value.status == SessionStatus.EXERCISE) {
+                val bfWarmup = _uiState.value.current().isWarmup()
                 if(!postExerciseUpdate()) {
+                    //We check if the ex before is warmup or the upcoming is warmup
                     _uiState.value =
-                        _uiState.value.copy(timer = if(_uiState.value.current().isWarmup()) 15 else _uiState.value.rest, status = SessionStatus.REST)
+                        _uiState.value.copy(timer = if(_uiState.value.current().isWarmup() || bfWarmup) 15 else _uiState.value.rest, status = SessionStatus.REST)
                 }
             } else {
                 _uiState.value = _uiState.value.copy(paused = _uiState.value.paused.not())
@@ -261,6 +266,7 @@ class WorkoutSessionService : Service() {
             } else {
                 _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)
             }
+            updateNotification()
         }
 
         /**
@@ -325,7 +331,7 @@ class WorkoutSessionService : Service() {
 
 
     override fun onCreate() {
-        println("Calling onCreate")
+        super.onCreate()
         super.onCreate()
         createNotificationChannel()
         binder.create()
@@ -370,22 +376,6 @@ class WorkoutSessionService : Service() {
         var inputStream: InputStream? = null
         if(state.status != SessionStatus.DONE) {
             inputStream = imageStream(state.current().type.imagePreview(), applicationContext)
-        }
-        var bitmapTint: Bitmap? = null
-        if (inputStream != null) {
-            val bitmapState =
-                BitmapFactory.decodeStream(inputStream)
-            val paint = Paint()
-            paint.setColorFilter(
-                PorterDuffColorFilter(
-                    surfaceLight.toArgb(),
-                    PorterDuff.Mode.DARKEN
-                )
-            )
-            bitmapTint =
-                Bitmap.createBitmap(bitmapState.width, bitmapState.height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmapTint)
-            canvas.drawBitmap(bitmapState, 0f, 0f, paint)
         }
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setUsesChronometer(state.status != SessionStatus.START)
@@ -434,7 +424,7 @@ class WorkoutSessionService : Service() {
                     PendingIntent.FLAG_IMMUTABLE
                 )
             )
-            .setLargeIcon(bitmapTint)
+            .setLargeIcon(if(inputStream !=null) { Bitmap.createScaledBitmap(BitmapFactory.decodeStream(inputStream), 192, 192, true) } else { null })
             .addAction(
                 0, if (state.status == SessionStatus.START && state.paused) {
                     "Start"
@@ -490,7 +480,6 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val message = intent?.getStringExtra("MESSAGE")
         if (message != null) {
-            println(message)
             if (message == "PAUSE") {
                 WorkoutSessionService.ServiceBinderSingleton.binder.pauseAction()
             }

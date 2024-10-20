@@ -3,6 +3,8 @@ package fr.cuber.fitcube.home
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
@@ -133,7 +135,7 @@ fun HomeScaffold(
                 )
 
                 2 -> {
-                    Column(modifier = mod) {
+                    Column(modifier = mod.verticalScroll(rememberScrollState())) {
                         Text("History ${sessions.size}")
                         sessions.forEach { s ->
                             Text(text = s.toString())

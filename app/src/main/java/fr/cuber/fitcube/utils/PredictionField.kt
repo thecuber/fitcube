@@ -40,7 +40,7 @@ fun PredictionField(
     validPrediction: (List<Double>) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
-    val regexPattern = "(\\d+x\\d+(.\\d+)?\\s?)+"
+    val regexPattern = "(\\d+x\\d+(\\.\\d+)?\\s?)+"
     var validParsing by remember {
         mutableStateOf(
             false
@@ -74,7 +74,9 @@ fun PredictionField(
             )
             Spacer(modifier = Modifier.padding(5.dp))
             FilledIconButton(
-                onClick = { validPrediction(parsePrediction(text))},
+                onClick = {
+                    text = ""
+                    validPrediction(parsePrediction(text))},
                 enabled = validParsing,
                 modifier = Modifier
                     .size(55.dp)

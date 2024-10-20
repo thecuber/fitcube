@@ -27,11 +27,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -118,7 +121,7 @@ fun WorkoutSessionScreen(
                 viewModel.closeService()
             },
             onRestChange = { viewModel.setRest(it) },
-            onCurrentWeightChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
+            onCurrentPredictionChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
             onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) },
             pushTop = { viewModel.pushTop(it) },
             skipPause = { viewModel.skipPause() },
@@ -135,7 +138,7 @@ fun WorkoutSessionScaffold(
     onPauseAction: () -> Unit,
     closeSession: () -> Unit,
     onRestChange: (Int) -> Unit,
-    onCurrentWeightChange: (List<Double>, Int) -> Unit,
+    onCurrentPredictionChange: (List<Double>, Int) -> Unit,
     onNextWeightChange: (List<Double>, Int) -> Unit,
     pushTop: (Int) -> Unit,
     skipPause: () -> Unit,
@@ -176,7 +179,7 @@ fun WorkoutSessionScaffold(
             state = state,
             onPauseAction = onPauseAction,
             onRestChange = onRestChange,
-            onCurrentWeightChange = onCurrentWeightChange,
+            onCurrentPredictionChange = onCurrentPredictionChange,
             onNextWeightChange = onNextWeightChange,
             pushTop = pushTop,
             skipPause = skipPause,
@@ -198,7 +201,7 @@ fun WorkoutSessionContentPreview() {
                 onPauseAction = {},
                 closeSession = {},
                 onRestChange = {},
-                onCurrentWeightChange = { a, b -> a + b },
+                onCurrentPredictionChange = { a, b -> a + b },
                 onNextWeightChange = { a, b -> a + b },
                 pushTop = {},
                 skipPause = {},
@@ -211,7 +214,7 @@ fun WorkoutSessionContentPreview() {
 
 enum class Expanded {
     DEFAULT,
-    WEIGHTS,
+    PREDICTION,
     EXERCISES,
     TIMER
 }
@@ -222,12 +225,13 @@ fun WorkoutSessionContent(
     state: SessionState,
     onPauseAction: () -> Unit,
     onRestChange: (Int) -> Unit,
-    onCurrentWeightChange: (List<Double>, Int) -> Unit,
+    onCurrentPredictionChange: (List<Double>, Int) -> Unit,
     onNextWeightChange: (List<Double>, Int) -> Unit,
     pushTop: (Int) -> Unit,
     skipPause: () -> Unit,
     skipExercise: (Boolean) -> Unit
 ) {
+    println(state.workout.exercises)
     val exerciseCount = state.exerciseCount()
     val progress = if (exerciseCount > 0) {
         state.workout.exercises.map {
@@ -264,20 +268,17 @@ fun WorkoutSessionContent(
                     .aspectRatio(1f)
             )
         }
-        WorkoutSessionWeights(
+        WorkoutSessionPrediction(
             exercises = state.ordered(),
             currentExercise = state.currentExercise,
             currentSet = state.currentSet(),
             expanded = expanded,
             setExpanded = {
-                expanded = if (expanded == Expanded.WEIGHTS) {
-                    Expanded.DEFAULT
-                } else {
-                    Expanded.WEIGHTS
-                }
+                expanded = expanded(expanded, Expanded.PREDICTION)
             },
-            onCurrentWeightChange = { a, b -> onCurrentWeightChange(a, b) },
-            onNextWeightChange = { a, b -> onNextWeightChange(a, b) }
+            onCurrentPredictionChange = { a, b -> onCurrentPredictionChange(a, b) },
+            onNextPredictionChange = { a, b -> onNextWeightChange(a, b) },
+            nextPredictions = state.predictions
         )
         WorkoutSessionActions(
             onPauseAction = onPauseAction,
@@ -286,20 +287,26 @@ fun WorkoutSessionContent(
             timer = state.timer,
             currentSet = state.currentSet(),
             totalSets = state.current().exercise.prediction.size,
-            progress = progress,
             elapsedTime = state.elapsedTime,
             status = state.status,
             rest = state.rest,
             setRest = onRestChange,
             setExpanded = {
-                expanded = if (expanded == Expanded.TIMER) {
-                    Expanded.DEFAULT
-                } else {
-                    Expanded.TIMER
-                }
+                expanded = expanded(expanded, Expanded.TIMER)
             },
             skipPause = skipPause,
             skipExercise = skipExercise
+        )
+        val progressAnimation by animateFloatAsState(
+            targetValue = if(state.status == SessionStatus.DONE) 1f else progress,
+            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing), label = "",
+        )
+        LinearProgressIndicator(
+            progress = { progressAnimation },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 5.dp),
+            strokeCap = StrokeCap.Round,
         )
         if (state.currentExercise < exerciseCount - 1) {
             WorkoutSessionNextExercise(
@@ -309,11 +316,7 @@ fun WorkoutSessionContent(
                 expanded = expanded,
                 pushTop = pushTop,
                 setExpanded = {
-                    expanded = if (expanded == Expanded.EXERCISES) {
-                        Expanded.DEFAULT
-                    } else {
-                        Expanded.EXERCISES
-                    }
+                    expanded = expanded(expanded, Expanded.EXERCISES)
                 }
             )
         }
@@ -322,25 +325,28 @@ fun WorkoutSessionContent(
 
 
 @Composable
-fun WorkoutSessionWeights(
+fun WorkoutSessionPrediction(
     exercises: List<FullExercise>,
+    nextPredictions: Map<Int, List<Double>>,
     currentExercise: Int,
     modifier: Modifier = Modifier,
     currentSet: Int,
     expanded: Expanded,
     setExpanded: () -> Unit,
-    onCurrentWeightChange: (List<Double>, Int) -> Unit,
-    onNextWeightChange: (List<Double>, Int) -> Unit
+    onCurrentPredictionChange: (List<Double>, Int) -> Unit,
+    onNextPredictionChange: (List<Double>, Int) -> Unit
 ) {
-    //TODO animation for text slide
-    //TODO Carousel to update all exercises
     var index by remember {
-        mutableIntStateOf(0)
+        mutableIntStateOf(currentExercise)
     }
-    LaunchedEffect(key1 = currentExercise) {
-        index = currentExercise
+    LaunchedEffect(key1 = currentExercise, key2 = expanded) {
+        if(expanded != Expanded.PREDICTION) {
+            index = currentExercise
+        }
     }
     val exercise = exercises[index]
+    val isExpanded = expanded == Expanded.PREDICTION
+    val suffix = if(exercise.exercise.mode == WorkoutMode.TIMED) "s" else "kgs"
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -358,29 +364,71 @@ fun WorkoutSessionWeights(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = if(isExpanded) Arrangement.Center else Arrangement.Start
             ) {
                 Text(
-                    "Weights",
+                    "Predictions",
                     fontSize = 20.sp,
                     fontWeight = FontWeight(700)
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                val prediction = exercise.exercise.prediction
-                if (currentSet > 0) Text(
-                    "${prediction[currentSet - 1]}kgs",
-                    fontWeight = FontWeight(200)
-                )
-                Spacer(modifier = Modifier.padding(5.dp))
-                Text("${prediction[currentSet]}kgs", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.padding(5.dp))
-                if (currentSet + 1 < prediction.size) Text(
-                    "${prediction[currentSet + 1]}kgs",
-                    fontWeight = FontWeight(200)
-                )
+                if(!isExpanded) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    val prediction = exercise.exercise.prediction
+                    if (currentSet > 0) Text(
+                        "${prediction[currentSet - 1]}$suffix",
+                        fontWeight = FontWeight(200)
+                    )
+                    Spacer(modifier = Modifier.padding(5.dp))
+                    Text("${prediction[currentSet]}$suffix", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.padding(5.dp))
+                    if (currentSet + 1 < prediction.size) Text(
+                        "${prediction[currentSet + 1]}$suffix",
+                        fontWeight = FontWeight(200)
+                    )
+                }
             }
-            var checked by remember { mutableStateOf(true) }
-            if (expanded == Expanded.WEIGHTS) {
+            var checked by remember { mutableStateOf(true) }//If we show the field for next prediction only
+            var dialog by remember { mutableStateOf(false) }//If the dialog is shown when not the same nb of sets
+            var predi by remember { mutableStateOf(listOf<Double>()) }
+            var top by remember { mutableStateOf(false) }
+            if (expanded == Expanded.PREDICTION) {
+
+                if(dialog) {
+                    AlertDialog(
+                        text = {
+                            Text("Do you want to change the number of sets ?")
+                        },
+                        icon = {
+                            Icon(Icons.Filled.Warning, contentDescription = null)
+                        },
+                        onDismissRequest = { dialog = false },
+                        dismissButton = {
+                            Button(
+                                onClick = {
+                                    dialog = false
+                                }
+                            ) {
+                                Text("Dismiss")
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    if(top) {
+                                        onCurrentPredictionChange(predi, index)
+                                    }
+                                    if(checked || !top) {
+                                        onNextPredictionChange(predi, exercise.exercise.id)
+                                    }
+                                    dialog = false
+                                }
+                            ) {
+                                Text("Confirm")
+                            }
+                        }
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -398,10 +446,26 @@ fun WorkoutSessionWeights(
                         Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null)
                     }
                 }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 5.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                   Text(text = showPrediction(exercise.exercise.prediction))
+                }
                 PredictionField(
                     validPrediction = {
-                        onCurrentWeightChange(it, index)
-                        if(checked) onNextWeightChange(it, index)
+                        if(it.size != exercise.exercise.prediction.size) {
+                            top = true
+                            predi = it
+                            dialog = true
+                        } else {
+                            onCurrentPredictionChange(it, index)
+                            if(checked) {
+                                onNextPredictionChange(it, exercise.exercise.id)
+                            }
+                        }
                     }
                 )
                 Spacer(modifier = Modifier.padding(5.dp))
@@ -412,12 +476,29 @@ fun WorkoutSessionWeights(
                     Checkbox(checked = checked, onCheckedChange = {
                         checked = it
                     })
-                    Text("Use same weights for next session")
+                    Text("Use same prediction for next session")
                 }
                 if(!checked) {
-                    Text("Next session weights")
+                    Text("Next session prediction")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 5.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(text = showPrediction(nextPredictions[exercise.exercise.id]!!))
+                    }
                     PredictionField(
-                        validPrediction = { onNextWeightChange(it, index) }
+                        validPrediction = {
+                            if(it.size != nextPredictions[exercise.exercise.id]!!.size) {
+                                top = false
+                                predi = it
+                                dialog = true
+                            } else {
+                                onNextPredictionChange(it, exercise.exercise.id)
+                            }
+
+                        }
                     )
                     Spacer(modifier = Modifier.padding(10.dp))
                 }
@@ -428,17 +509,40 @@ fun WorkoutSessionWeights(
 
 @Preview
 @Composable
-fun WorkoutSessionWeightsPreview() {
+fun WorkoutSessionPredictionPreview() {
+    var exercises by remember {
+        mutableStateOf(List(10) { defaultFullExercise(it) })
+    }
+    var expanded by remember {
+        mutableStateOf(Expanded.PREDICTION)
+    }
+    var nextPredictions by remember {
+        mutableStateOf(List(10) { it }.associateWith { List(4) { _ -> it * 10.0 } })
+    }
     FitCubeTheme(false) {
         Surface {
-            WorkoutSessionWeights(
-                exercises = List(10) { defaultFullExercise(it) },
+            WorkoutSessionPrediction(
+                exercises = exercises,
                 currentExercise = 0,
                 currentSet = 0,
-                expanded = Expanded.WEIGHTS,
-                setExpanded = {},
-                onCurrentWeightChange = { _, _ ->},
-                onNextWeightChange = {_, _ -> })
+                expanded = expanded,
+                setExpanded = {
+                    expanded = expanded(expanded, Expanded.PREDICTION)
+                },
+                onCurrentPredictionChange = {
+                    predictions, index -> exercises = exercises.mapIndexed { a, b ->
+                        if(a == index) {
+                            b.copy(exercise = b.exercise.copy(prediction = predictions))
+                        } else {
+                            b
+                        }
+                }},
+                onNextPredictionChange = { a, b ->
+                    nextPredictions = nextPredictions.toMutableMap().apply {
+                        set(b, a)
+                    }
+                },
+                nextPredictions = nextPredictions)
         }
     }
 }
@@ -457,7 +561,6 @@ fun WorkoutSessionActions(
     rest: Int,
     setRest: (Int) -> Unit,
     totalSets: Int,
-    progress: Float,
     elapsedTime: Long,
     modifier: Modifier = Modifier,
     setExpanded: () -> Unit,
@@ -520,10 +623,6 @@ fun WorkoutSessionActions(
         }
     }
     val started = status != SessionStatus.START
-    val progressAnimation by animateFloatAsState(
-        targetValue = if(status == SessionStatus.DONE) 1f else progress,
-        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing), label = "",
-    )
     Column(modifier = modifier
         .clickable { setExpanded() }
         .padding(horizontal = 10.dp)) {
@@ -608,13 +707,7 @@ fun WorkoutSessionActions(
                 )
             )
         }
-        LinearProgressIndicator(
-            progress = { progressAnimation },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 5.dp),
-            strokeCap = StrokeCap.Round,
-        )
+
     }
 }
 
@@ -626,7 +719,6 @@ fun WorkoutSessionActionsPreview() {
             WorkoutSessionActions(
                 onPauseAction = {},
                 paused = false,
-                progress = 0.5f,
                 timer = 83,
                 modifier = Modifier.padding(10.dp),
                 currentSet = 1,
@@ -730,6 +822,7 @@ fun WorkoutSessionNextExercise(
             val ex = exercises[exerciseIndex]
             Row(
                 modifier = Modifier
+                    .padding(horizontal = 10.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -758,17 +851,21 @@ fun WorkoutSessionNextExercise(
 @Preview
 @Composable
 fun WorkoutSessionNextExercisePreview() {
+    val list = listOf("")
     FitCubeTheme {
-        Surface {
+        Surface { 
             WorkoutSessionNextExercise(
                 exerciseCount = 10,
                 exerciseIndex = 1,
                 expanded = Expanded.EXERCISES,
                 setExpanded = {},
-                exercises = List(10) { defaultFullExercise(it) },
+                exercises = List(10) { defaultFullExercise(it).apply {
+                    type.image = listOf(list[it % list.size])
+                } },
                 pushTop = {}
             )
         }
     }
 }
 
+private fun expanded(current: Expanded, value: Expanded): Expanded = if(current == value) Expanded.DEFAULT else value

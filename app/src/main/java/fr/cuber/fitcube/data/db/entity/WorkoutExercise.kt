@@ -19,7 +19,7 @@ fun defaultWorkoutExercise(id: Int) = WorkoutExercise(
     typeId = id,
     workoutId = 0,
     mode = WorkoutMode.REPETITION,
-    prediction = List(4) { 25.0 },
+    prediction = List(4) { id * 10.0 },
     enabled = true
 )
 

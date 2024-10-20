@@ -95,7 +95,6 @@ fun WorkoutInfoScreen(
         openExercise = openExercise,
         addExercise = addExercise,
         onRemove = {
-            println("Deleting $it")
             viewModel.deleteExercises(it) },
         deleteWorkout = {
             loader = LoadingFlow.Loading

@@ -19,7 +19,7 @@ data class SessionState(
     val timer: Int,
     val workout: WorkoutWithExercises,
     val started: Long,
-    val predictions: List<List<Double>>,
+    val predictions: Map<Int, List<Double>>,
     val elapsedTime: Long,
     val paused: Boolean,
     val rest: Int
@@ -45,7 +45,7 @@ fun defaultSessionState(size: Int) = SessionState(
     10,
     defaultWorkoutWithExercises(size),
     0L,
-    List(size) { List(4) { 10.0 } },
+    List(size) { it }.associateWith { List(4) { it * 10.0 } },
     0L,
     true,
     1

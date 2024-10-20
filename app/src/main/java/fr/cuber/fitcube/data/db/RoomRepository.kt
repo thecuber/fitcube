@@ -36,7 +36,15 @@ class RoomRepository @Inject constructor(
 
 
     suspend fun saveWorkoutExercise(ex: WorkoutExercise) = exerciseDao.saveWorkoutExercise(ex)
-    suspend fun deleteWorkoutExercise(ex: WorkoutExercise) = exerciseDao.deleteWorkoutExercise(ex)
+    suspend fun deleteWorkoutExercise(ex: WorkoutExercise) {
+        exerciseDao.deleteWorkoutExercise(ex)
+        //We remove the exercise from the order list
+        val workout = workoutDao.getWorkoutSuspend(ex.workoutId)
+        val order = workout.workout.order.toMutableList().apply {
+            remove(ex.id)
+        }
+        workoutDao.moveOrder(order, ex.id)
+    }
     suspend fun createWorkoutExercise(ex: WorkoutExercise) = exerciseDao.createWorkoutExercise(ex)
 
     fun getSessions(id: Int) = sessionDao.getSessionsByWorkoutId(id)
