@@ -83,6 +83,8 @@ import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
 import fr.cuber.fitcube.data.db.dao.isWarmup
+import fr.cuber.fitcube.data.db.entity.ExerciseType
+import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.data.db.loadingCollect
@@ -231,7 +233,6 @@ fun WorkoutSessionContent(
     skipPause: () -> Unit,
     skipExercise: (Boolean) -> Unit
 ) {
-    println(state.workout.exercises)
     val exerciseCount = state.exerciseCount()
     val progress = if (exerciseCount > 0) {
         state.workout.exercises.map {
@@ -239,13 +240,12 @@ fun WorkoutSessionContent(
             if (index < state.currentExercise) it.exercise.prediction.size.toFloat()
             else if (index == state.currentExercise) {
                 var v = 0f
-                if(state.current().exercise.mode == WorkoutMode.TIMED && state.status == SessionStatus.TIMING) {
+                if (state.current().exercise.mode == WorkoutMode.TIMED && state.status == SessionStatus.TIMING) {
                     val u = state.current().exercise.prediction[state.currentSet()].toFloat()
                     v = (u - max(state.timer, 0)) / u
                 }
                 state.currentSet() + v
-            }
-            else 0f
+            } else 0f
         }.sum() / state.workout.exercises.sumOf {
             it.exercise.prediction.size
         }.toFloat()
@@ -298,7 +298,7 @@ fun WorkoutSessionContent(
             skipExercise = skipExercise
         )
         val progressAnimation by animateFloatAsState(
-            targetValue = if(state.status == SessionStatus.DONE) 1f else progress,
+            targetValue = if (state.status == SessionStatus.DONE) 1f else progress,
             animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing), label = "",
         )
         LinearProgressIndicator(
@@ -340,13 +340,13 @@ fun WorkoutSessionPrediction(
         mutableIntStateOf(currentExercise)
     }
     LaunchedEffect(key1 = currentExercise, key2 = expanded) {
-        if(expanded != Expanded.PREDICTION) {
+        if (expanded != Expanded.PREDICTION) {
             index = currentExercise
         }
     }
     val exercise = exercises[index]
     val isExpanded = expanded == Expanded.PREDICTION
-    val suffix = if(exercise.exercise.mode == WorkoutMode.TIMED) "s" else "kgs"
+    val suffix = if (exercise.exercise.mode == WorkoutMode.TIMED) "s" else "kgs"
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -365,14 +365,14 @@ fun WorkoutSessionPrediction(
                     .fillMaxWidth()
                     .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = if(isExpanded) Arrangement.Center else Arrangement.Start
+                horizontalArrangement = if (isExpanded) Arrangement.Center else Arrangement.Start
             ) {
                 Text(
                     "Predictions",
                     fontSize = 20.sp,
                     fontWeight = FontWeight(700)
                 )
-                if(!isExpanded) {
+                if (!isExpanded) {
                     Spacer(modifier = Modifier.weight(1f))
                     val prediction = exercise.exercise.prediction
                     if (currentSet > 0) Text(
@@ -394,7 +394,7 @@ fun WorkoutSessionPrediction(
             var top by remember { mutableStateOf(false) }
             if (expanded == Expanded.PREDICTION) {
 
-                if(dialog) {
+                if (dialog) {
                     AlertDialog(
                         text = {
                             Text("Do you want to change the number of sets ?")
@@ -415,10 +415,10 @@ fun WorkoutSessionPrediction(
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    if(top) {
+                                    if (top) {
                                         onCurrentPredictionChange(predi, index)
                                     }
-                                    if(checked || !top) {
+                                    if (checked || !top) {
                                         onNextPredictionChange(predi, exercise.exercise.id)
                                     }
                                     dialog = false
@@ -452,17 +452,17 @@ fun WorkoutSessionPrediction(
                         .padding(vertical = 5.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                   Text(text = showPrediction(exercise.exercise.prediction))
+                    Text(text = showPrediction(exercise.exercise.prediction))
                 }
                 PredictionField(
                     validPrediction = {
-                        if(it.size != exercise.exercise.prediction.size) {
+                        if (it.size != exercise.exercise.prediction.size) {
                             top = true
                             predi = it
                             dialog = true
                         } else {
                             onCurrentPredictionChange(it, index)
-                            if(checked) {
+                            if (checked) {
                                 onNextPredictionChange(it, exercise.exercise.id)
                             }
                         }
@@ -478,7 +478,7 @@ fun WorkoutSessionPrediction(
                     })
                     Text("Use same prediction for next session")
                 }
-                if(!checked) {
+                if (!checked) {
                     Text("Next session prediction")
                     Row(
                         modifier = Modifier
@@ -490,7 +490,7 @@ fun WorkoutSessionPrediction(
                     }
                     PredictionField(
                         validPrediction = {
-                            if(it.size != nextPredictions[exercise.exercise.id]!!.size) {
+                            if (it.size != nextPredictions[exercise.exercise.id]!!.size) {
                                 top = false
                                 predi = it
                                 dialog = true
@@ -529,20 +529,22 @@ fun WorkoutSessionPredictionPreview() {
                 setExpanded = {
                     expanded = expanded(expanded, Expanded.PREDICTION)
                 },
-                onCurrentPredictionChange = {
-                    predictions, index -> exercises = exercises.mapIndexed { a, b ->
-                        if(a == index) {
+                onCurrentPredictionChange = { predictions, index ->
+                    exercises = exercises.mapIndexed { a, b ->
+                        if (a == index) {
                             b.copy(exercise = b.exercise.copy(prediction = predictions))
                         } else {
                             b
                         }
-                }},
+                    }
+                },
                 onNextPredictionChange = { a, b ->
                     nextPredictions = nextPredictions.toMutableMap().apply {
                         set(b, a)
                     }
                 },
-                nextPredictions = nextPredictions)
+                nextPredictions = nextPredictions
+            )
         }
     }
 }
@@ -570,7 +572,7 @@ fun WorkoutSessionActions(
     var openedDialog by remember {
         mutableStateOf(false)
     }
-    if(openedDialog) {
+    if (openedDialog) {
         Dialog(onDismissRequest = { openedDialog = false }) {
             Card(
                 modifier = Modifier
@@ -597,7 +599,7 @@ fun WorkoutSessionActions(
                             onClick = {
                                 skipExercise(false)
                                 openedDialog = false
-                          },
+                            },
                             modifier = Modifier.padding(8.dp),
                         ) {
                             Text("Only one series")
@@ -633,9 +635,11 @@ fun WorkoutSessionActions(
                         SessionStatus.START, SessionStatus.REST, SessionStatus.TIMING -> {
                             parseTimer(timer)
                         }
+
                         SessionStatus.EXERCISE -> {
                             "Set ${currentSet + 1}/$totalSets"
                         }
+
                         else -> {
                             "Finish"
                         }
@@ -656,10 +660,10 @@ fun WorkoutSessionActions(
             }
             Spacer(modifier = Modifier.weight(1f))
             FilledIconButton(
-                onClick = { 
-                    if(status == SessionStatus.REST) {
+                onClick = {
+                    if (status == SessionStatus.REST) {
                         skipPause()
-                    } else if(currentSet == totalSets - 1){
+                    } else if (currentSet == totalSets - 1) {
                         skipExercise(false)
                     } else {
                         openedDialog = true
@@ -744,14 +748,15 @@ fun WorkoutSessionNextExercise(
     exerciseIndex: Int,
     exerciseCount: Int,
     exercises: List<FullExercise>,
-    pushTop: (Int) -> Unit
+    pushTop: (Int) -> Unit,
+    preview: Boolean = false
 ) {
     var mod = modifier
         .fillMaxWidth()
         .animateContentSize()
         .clickable { setExpanded() }
     mod = if (expanded == Expanded.EXERCISES) {
-        mod.fillMaxHeight(0.3f)
+        if (preview) mod else mod.fillMaxHeight(0.3f)
     } else {
         mod.padding(10.dp)
     }
@@ -790,7 +795,7 @@ fun WorkoutSessionNextExercise(
                                 imageVector = Icons.Rounded.KeyboardDoubleArrowUp,
                                 contentDescription = null,
                                 modifier = Modifier.padding(horizontal = 10.dp),
-                                tint = if(enabled) Color.Black else Color.Gray
+                                tint = if (enabled) Color.Black else Color.Gray
                             )
                         }
                         Row(
@@ -800,8 +805,11 @@ fun WorkoutSessionNextExercise(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Column{
-                                Text("${exercise.type.name} (${exerciseIndex + 1 + index}/$exerciseCount)")
+                            Column {
+                                Text(
+                                    "${exercise.type.name} (${exerciseIndex + 1 + index}/$exerciseCount)",
+                                    fontSize = 14.sp
+                                )
                                 Text(
                                     showPrediction(exercise.exercise.prediction),
                                     fontStyle = FontStyle.Italic,
@@ -851,21 +859,150 @@ fun WorkoutSessionNextExercise(
 @Preview
 @Composable
 fun WorkoutSessionNextExercisePreview() {
-    val list = listOf("")
+    val exercises = listOf(
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = -314,
+                typeId = -314,
+                workoutId = 0,
+                mode = WorkoutMode.TIMED,
+                prediction = listOf(5.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = -314,
+                name = "Warmup",
+                description = "",
+                image = listOf("png/warmup.png")
+            )
+        ),
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = 10,
+                typeId = 294,
+                workoutId = 3,
+                mode = WorkoutMode.REPETITION,
+                prediction = listOf(5.0, 8.0, 8.0, 8.0, 8.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = 294,
+                name = "Lat pulldowns",
+                description = "",
+                image = listOf()
+            )
+        ),
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = 11,
+                typeId = 45,
+                workoutId = 3,
+                mode = WorkoutMode.REPETITION,
+                prediction = listOf(30.0, 30.0, 30.0, 30.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = 45,
+                name = "Dumbbell Bent Arm Pullover",
+                description = "",
+                image = listOf("png/0046-relaxation.png", "png/0046-tension.png")
+            )
+        ),
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = 12,
+                typeId = 24,
+                workoutId = 3,
+                mode = WorkoutMode.REPETITION,
+                prediction = listOf(40.0, 40.0, 40.0, 40.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = 24,
+                name = "Rear Deltoid Row Dumbbell",
+                description = "",
+                image = listOf("png/0024-relaxation.png", "png/0024-tension.png")
+            )
+        ),
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = 13,
+                typeId = 203,
+                workoutId = 3,
+                mode = WorkoutMode.REPETITION,
+                prediction = listOf(25.0, 25.0, 25.0, 25.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = 203,
+                name = "Alternating Hammer Curl with Dumbbell",
+                description = "",
+                image = listOf("png/0213-relaxation.png", "png/0213-tension.png")
+            )
+        ),
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = 14,
+                typeId = 213,
+                workoutId = 3,
+                mode = WorkoutMode.REPETITION,
+                prediction = listOf(30.0, 30.0, 25.0, 25.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = 213,
+                name = "Alternating Bicep Curl with Dumbbell",
+                description = "",
+                image = listOf("png/0223-relaxation.png", "png/0223-tension.png")
+            )
+        ),
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = 22,
+                typeId = 299,
+                workoutId = 3,
+                mode = WorkoutMode.REPETITION,
+                prediction = listOf(5.0, 5.0, 5.0, 5.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = 299,
+                name = "Tirage sur tête",
+                description = "",
+                image = listOf()
+            )
+        ),
+        FullExercise(
+            exercise = WorkoutExercise(
+                id = -315,
+                typeId = -315,
+                workoutId = 0,
+                mode = WorkoutMode.TIMED,
+                prediction = listOf(5.0),
+                enabled = true
+            ),
+            type = ExerciseType(
+                id = -315,
+                name = "Stretching",
+                description = "",
+                image = listOf("png/warmup.png")
+            )
+        )
+    )
     FitCubeTheme {
-        Surface { 
+        Surface {
             WorkoutSessionNextExercise(
-                exerciseCount = 10,
+                exerciseCount = exercises.size,
                 exerciseIndex = 1,
                 expanded = Expanded.EXERCISES,
                 setExpanded = {},
-                exercises = List(10) { defaultFullExercise(it).apply {
-                    type.image = listOf(list[it % list.size])
-                } },
-                pushTop = {}
+                exercises = exercises,
+                pushTop = {},
+                preview = true
             )
         }
     }
 }
 
-private fun expanded(current: Expanded, value: Expanded): Expanded = if(current == value) Expanded.DEFAULT else value
+private fun expanded(current: Expanded, value: Expanded): Expanded =
+    if (current == value) Expanded.DEFAULT else value

@@ -75,8 +75,8 @@ fun PredictionField(
             Spacer(modifier = Modifier.padding(5.dp))
             FilledIconButton(
                 onClick = {
-                    text = ""
-                    validPrediction(parsePrediction(text))},
+                    validPrediction(parsePrediction(text))
+                    text = ""},
                 enabled = validParsing,
                 modifier = Modifier
                     .size(55.dp)

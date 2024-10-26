@@ -87,7 +87,7 @@ fun WorkoutList(
     }
     LaunchedEffect(workouts) {
         if(workouts.isNotEmpty() && selected == -1) {
-            selected = workouts[0].workout.id
+            selected = workouts.sortedBy { it.date }[0].workout.id
         }
     }
     val workout = workouts.find { it.workout.id == selected }
