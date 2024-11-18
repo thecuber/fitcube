@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cuber.fitcube.data.db.RoomRepository
 import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.data.db.success
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,5 +31,9 @@ class HomeViewModel @Inject constructor(
     fun getExercises() = repository.getExerciseTypes().success()
 
     fun getSessions() = repository.getSessions().success()
+    suspend fun deleteWorkout(workoutId: Int) = viewModelScope.launch {
+        delay(250)
+        repository.deleteWorkout(workoutId)
+    }
 
 }

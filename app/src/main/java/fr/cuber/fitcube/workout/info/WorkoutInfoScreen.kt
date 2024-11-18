@@ -1,48 +1,66 @@
 package fr.cuber.fitcube.workout.info
 
 import android.annotation.SuppressLint
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
@@ -56,62 +74,53 @@ import fr.cuber.fitcube.data.db.loadingCollect
 import fr.cuber.fitcube.ui.theme.FitCubeTheme
 import fr.cuber.fitcube.utils.ExerciseIcon
 import fr.cuber.fitcube.utils.FitCubeAppBar
-import fr.cuber.fitcube.utils.LoadingFlow
 import fr.cuber.fitcube.utils.LoadingFlowContainer
-import fr.cuber.fitcube.utils.OutlinedTIButton
 import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.showPrediction
-import org.burnoutcrew.reorderable.ItemPosition
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
+import kotlin.math.roundToInt
 
 @Composable
 fun WorkoutInfoScreen(
     modifier: Modifier = Modifier,
     onClose: () -> Unit,
+    deleteWorkout: () -> Unit,
     workoutId: Int,
     openExercise: (WorkoutExercise) -> Unit,
     addExercise: () -> Unit,
     startWorkout: () -> Unit,
     viewModel: WorkoutInfoViewModel = hiltViewModel()
 ) {
-    //for time between delete and close
     val workoutExercisesLoading by viewModel.getWorkout(workoutId).loadingCollect()
     val sessionsLoading by viewModel.getSessions(workoutId).loadingCollect()
-    var loader: LoadingFlow<*> = LoadingFlow.Success(null)
     LoadingFlowContainer(
-        workoutExercisesLoading, sessionsLoading, loader
-    ) { workoutExercises, sessions, _ -> WorkoutInfoScaffold(
-        workout = workoutExercises.workout,
-        startWorkout = startWorkout,
-        exercises = workoutExercises.exercises.sortedBy { if(workoutExercises.workout.order.isNotEmpty()) workoutExercises.workout.order.indexOf(it.exercise.id) else 0 },
-        sessions = sessions,
-        onClose = onClose,
-        modifier = modifier,
-        openExercise = openExercise,
-        addExercise = addExercise,
-        onRemove = {
-            viewModel.deleteExercises(it) },
-        deleteWorkout = {
-            loader = LoadingFlow.Loading
-            viewModel.deleteWorkout(workoutId)
-            onClose()
-        },
-        onMove = {
-            from, to ->
-            viewModel.moveOrder(workoutExercises.workout.order.toMutableList().apply {
-                set(to.index, from.key as Int)
-                set(from.index, to.key as Int)
-        }, workoutId)
-        },
-        onUpdateWarmup = {
-            viewModel.updateWarmup(workoutId, it)
-        }
-    )
+        workoutExercisesLoading, sessionsLoading
+    ) { workoutExercises, sessions ->
+        val workout =
+            workoutExercises.workout.copy(order = workoutExercises.workout.order.ifEmpty { workoutExercises.exercises.map { it.exercise.id } })
+        WorkoutInfoScaffold(
+            workout = workout,
+            startWorkout = startWorkout,
+            exercises = workoutExercises.exercises.sortedBy {
+                if (workoutExercises.workout.order.isNotEmpty()) workoutExercises.workout.order.indexOf(
+                    it.exercise.id
+                ) else 0
+            },
+            sessions = sessions,
+            onClose = onClose,
+            modifier = modifier,
+            openExercise = openExercise,
+            addExercise = addExercise,
+            deleteWorkout = deleteWorkout,
+            orderExercises = {
+                viewModel.moveOrder(it, workoutId)
+            },
+            archiveExercise = { a, b ->
+                viewModel.archiveExercise(a, b)
+            }
+        )
     }
 }
 
@@ -125,13 +134,14 @@ fun WorkoutInfoScaffold(
     addExercise: () -> Unit,
     startWorkout: () -> Unit,
     modifier: Modifier = Modifier,
-    onRemove: (List<Int>) -> Unit,
     deleteWorkout: () -> Unit,
-    onMove: (ItemPosition, ItemPosition) -> Unit,
-    onUpdateWarmup: (Int) -> Unit
+    orderExercises: (List<Int>) -> Unit,
+    archiveExercise: (Int, Boolean) -> Unit
 ) {
+    val sbHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     var delete by remember { mutableStateOf(false) }
-    if(delete) {
+    if (delete) {
         AlertDialog(
             icon = {
                 Icon(Icons.Filled.Warning, contentDescription = "Example Icon")
@@ -163,9 +173,21 @@ fun WorkoutInfoScaffold(
             }
         )
     }
+    var visibility by remember {
+        mutableStateOf(false)
+    }
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = sbHostState)
+        },
         topBar = {
-            FitCubeAppBar(title = workout.name, onClose = onClose, actions = mapOf(Icons.Filled.Delete to deleteWorkout))
+            FitCubeAppBar(
+                title = workout.name,
+                onClose = onClose,
+                actions = mapOf((if (visibility) Icons.Filled.Visibility else Icons.Filled.VisibilityOff) to {
+                    visibility = !visibility
+                }, Icons.Filled.Add to addExercise, Icons.Filled.Delete to { delete = true })
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
@@ -178,13 +200,35 @@ fun WorkoutInfoScaffold(
         WorkoutInfoContent(
             openExercise = openExercise,
             modifier = modifier.padding(it),
-            exercises = exercises,
+            exercises = exercises.filter { ex -> visibility || ex.exercise.enabled },
             sessions = sessions,
-            onAdd = addExercise,
-            onRemove = onRemove,
-            onMove = onMove,
-            updateWarmup = onUpdateWarmup,
-            warmup = workout.warmup
+            orderExercises = orderExercises,
+            archiveExercise = { id ->
+                val ex = exercises.find { it.exercise.id == id }!!
+                if (!ex.exercise.enabled) {
+                    archiveExercise(id, true)
+                } else {
+                    archiveExercise(id, false)
+                    scope.launch {
+                        val result = sbHostState
+                            .showSnackbar(
+                                message = "Exercise archived",
+                                actionLabel = "Undo",
+                                // Defaults to SnackbarDuration.Short
+                                duration = SnackbarDuration.Indefinite
+                            )
+                        when (result) {
+                            SnackbarResult.ActionPerformed -> {
+                                archiveExercise(id, true)
+                            }
+
+                            SnackbarResult.Dismissed -> {
+
+                            }
+                        }
+                    }
+                }
+            }
         )
     }
 }
@@ -227,15 +271,9 @@ fun WorkoutInfoContent(
     exercises: List<FullExercise>,
     modifier: Modifier = Modifier,
     sessions: List<Session>,
-    onAdd: () -> Unit,
-    onRemove: (List<Int>) -> Unit,
-    onMove: (ItemPosition, ItemPosition) -> Unit,
-    updateWarmup: (Int) -> Unit,
-    warmup: Int
+    orderExercises: (List<Int>) -> Unit,
+    archiveExercise: (Int) -> Unit
 ) {
-    var delete by remember { mutableStateOf(false) }
-    val selection = remember { mutableStateOf(listOf<Int>()) }
-    val state = rememberReorderableLazyListState(onMove = onMove)
     Column(
         modifier = modifier
             .fillMaxSize(),
@@ -247,37 +285,23 @@ fun WorkoutInfoContent(
                 .padding(vertical = 10.dp, horizontal = 20.dp)
                 .fillMaxWidth()
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ){
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Warmup")
-                Checkbox(checked = (warmup and 1) > 0, onCheckedChange = {updateWarmup(warmup xor 1)})
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Stretching")
-                Checkbox(checked = (warmup and 2) > 0, onCheckedChange = {updateWarmup(warmup xor 2)})
-            }
-        }
         HorizontalDivider()
-        Row(
+        /*Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            OutlinedTIButton(text = if(delete) "Cancel" else "Add exercise", onClick = {
-                if(delete) {
+            OutlinedTIButton(text = if (delete) "Cancel" else "Add exercise", onClick = {
+                if (delete) {
                     selection.value = listOf()
                     delete = false
-                }else {
+                } else {
                     onAdd()
                 }
-            }, icon = if(delete) Icons.Filled.Cancel else Icons.Filled.Add)
+            }, icon = if (delete) Icons.Filled.Cancel else Icons.Filled.Add)
             OutlinedTIButton(
-                text = "Delete " + (if(delete) selection.value.size.toString() + " " else "") + "exercises",
+                text = "Delete " + (if (delete) selection.value.size.toString() + " " else "") + "exercises",
                 onClick = {
-                    if(delete) {
+                    if (delete) {
                         onRemove(selection.value)
                         selection.value = listOf()
                         delete = false
@@ -287,38 +311,133 @@ fun WorkoutInfoContent(
                 },
                 icon = Icons.Filled.Delete
             )
+        }*/
+        val localDensity = LocalDensity.current
+        var previousDragId by remember {
+            mutableIntStateOf(-1)
         }
-
+        var dragId by remember {
+            mutableIntStateOf(-1)
+        }
+        //First value is the total offset, second is how much we remove from previous drag
+        var dragOffsets by remember {
+            mutableStateOf(exercises.associate { it.exercise.id to Pair(0f, 0f) })
+        }
+        var dragHeights by remember {
+            mutableStateOf(exercises.associate { it.exercise.id to 0f })
+        }
+        var order by remember {
+            mutableStateOf(exercises.map { it.exercise.id })
+        }
+        //Text(text = dragOffsets.toString())
         LazyColumn(
-            state = state.listState,
-            modifier = Modifier
-                .reorderable(state)
-                .detectReorderAfterLongPress(state)
+            modifier = Modifier.background(Color.LightGray)
         ) {
-            items(exercises, { it.exercise.id }) { item ->
-                ReorderableItem(state, key = item) { isDragging ->
-                    val elevation = animateDpAsState(if (isDragging) 16.dp else 0.dp, label = "")
-                    Column(
-                        modifier = Modifier
-                            .shadow(elevation.value)
-                            .background(if(selection.value.contains(item.exercise.id)) Color.Gray else MaterialTheme.colorScheme.surface)
-                    ) {
-                        WorkoutInfoExerciseItem(exercise = item, modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if(delete) {
-                                    if(selection.value.contains(item.exercise.id)) {
-                                        selection.value = selection.value.filter { it != item.exercise.id }
-                                    } else {
-                                        selection.value += item.exercise.id
+            items(exercises) { exercise ->
+                val id = exercise.exercise.id
+                val index = order.indexOf(id)
+                val animatedOffset by animateFloatAsState(
+                    targetValue = dragOffsets[id]!!.first,
+                    label = ""
+                )
+                Column(
+                    modifier = Modifier
+                        .zIndex(if (dragId == id) 1f else 0f)
+                        .fillMaxWidth()
+                        .onGloballyPositioned { c ->
+                            dragHeights = dragHeights
+                                .toMutableMap()
+                                .apply {
+                                    this[id] = with(localDensity) {
+                                        c.size.height
+                                            .toDp()
+                                            .toPx()
                                     }
-                                } else {
-                                    openExercise(item.exercise)
                                 }
+                        }
+                        .offset {
+                            IntOffset(
+                                0,
+                                (if (dragId == -1 && previousDragId != id) dragOffsets[id]!!.first else animatedOffset).roundToInt()
+                            )
+                        }
+                        .draggable(
+                            orientation = Orientation.Vertical,
+                            state = rememberDraggableState { delta ->
+                                dragOffsets = dragOffsets
+                                    .toMutableMap()
+                                    .apply {
+                                        val v = this[id]!!
+                                        this[id] = Pair(v.first + delta, v.second)
+                                    }
+                                if (index > 0) {
+                                    val prevId = order[index - 1]
+                                    val offset = dragOffsets[id]!!
+                                    val offsetDiff = offset.first - offset.second
+                                    if (offsetDiff < 0 && dragHeights[prevId]!! / 2 < -offsetDiff) {
+                                        order = order
+                                            .toMutableList()
+                                            .apply {
+                                                this[index] = prevId
+                                                this[index - 1] = id
+                                            }
+                                        dragOffsets = dragOffsets
+                                            .toMutableMap()
+                                            .apply {
+                                                val v =
+                                                    dragHeights[prevId]!! / 2 + dragHeights[id]!! / 2
+                                                this[prevId] =
+                                                    Pair(this[prevId]!!.first + v, 0f)
+                                                this[id] = Pair(offset.first, offset.second - v)
+                                            }
+                                    }
+                                }
+                                if (index < order.size - 1) {
+                                    val nextId = order[index + 1]
+                                    val offset = dragOffsets[id]!!
+                                    val offsetDiff = offset.first - offset.second
+                                    if (offsetDiff > 0 && dragHeights[nextId]!! / 2 < offsetDiff) {
+                                        order = order
+                                            .toMutableList()
+                                            .apply {
+                                                this[index] = nextId
+                                                this[index + 1] = id
+                                            }
+                                        dragOffsets = dragOffsets
+                                            .toMutableMap()
+                                            .apply {
+                                                val v =
+                                                    dragHeights[nextId]!! / 2 + dragHeights[id]!! / 2
+                                                this[nextId] =
+                                                    Pair(this[nextId]!!.first - v, 0f)
+                                                this[id] = Pair(offset.first, offset.second + v)
+                                            }
+                                    }
+                                }
+                            },
+                            onDragStarted = {
+                                dragId = id
+                                previousDragId = -1
+                            },
+                            onDragStopped = {
+                                dragOffsets = dragOffsets
+                                    .toMutableMap()
+                                    .mapValues { Pair(0f, 0f) }
+                                orderExercises(order)
+                                dragId = -1
+                                previousDragId = id
                             }
-                            .padding(horizontal = 20.dp))
-                    }
+                        )
+                        //.height(IntrinsicSize.Min)
+                        .background(MaterialTheme.colorScheme.surface)
+                ) {
+                    WorkoutInfoExerciseItem(
+                        exercise,
+                        openExercise = openExercise,
+                        archiveExercise = archiveExercise
+                    )
                 }
+                HorizontalDivider()
             }
         }
     }
@@ -327,33 +446,113 @@ fun WorkoutInfoContent(
 @Composable
 fun WorkoutInfoExerciseItem(
     exercise: FullExercise,
-    modifier: Modifier
+    openExercise: (WorkoutExercise) -> Unit,
+    archiveExercise: (Int) -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = modifier.padding(vertical = 10.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(0.8f)
+    val localDensity = LocalDensity.current
+    var height by remember {
+        mutableStateOf(0.dp)
+    }
+    var delta by remember {
+        mutableFloatStateOf(0f)
+    }
+    val animatedDelta by animateFloatAsState(
+        targetValue = delta,
+        label = ""
+    )
+    Box {
+        Row(
+            modifier = Modifier
+                .zIndex(0f)
+                .fillMaxWidth(1f)
+                .height(height),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
         ) {
-            Text(exercise.type.name, fontWeight = FontWeight.Bold)
-            Text(
-                fontStyle = FontStyle.Italic,
-                text = showPrediction(exercise.exercise.prediction, true),
-                color = if (exercise.exercise.prediction.isEmpty()) {
-                    Color.Red
-                } else {
-                    Color.Black
+            Row(
+                modifier = Modifier
+                    .background(Color.Green)
+                    .fillMaxHeight()
+                    .aspectRatio(1f)
+                    .clickable {
+                        delta = 0f
+                        archiveExercise(exercise.exercise.id)
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Archive,
+                    contentDescription = null,
+                    tint = Color.LightGray
+                )
+            }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .zIndex(1f)
+                .fillMaxWidth()
+                .onGloballyPositioned {
+                    height = with(localDensity) {
+                        it.size.height.toDp()
+                    }
                 }
+                .offset { IntOffset(animatedDelta.toInt(), 0) }
+                .background(MaterialTheme.colorScheme.surface)
+                .draggable(orientation = Orientation.Horizontal, state = rememberDraggableState {
+                    delta += it
+                    with(localDensity) {
+                        val v = height.toPx()
+                        if (-delta > v) {
+                            delta = -v
+                        }
+                        if (delta > 0f) {
+                            delta = 0f
+                        }
+                    }
+                },
+                    onDragStopped = {
+                        with(localDensity) {
+                            delta = if (-delta > height.toPx() * 3 / 4) {
+                                -height.toPx()
+                            } else {
+                                0f
+                            }
+                        }
+                    })
+                .clickable {
+                    openExercise(exercise.exercise)
+                }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .padding(start = 20.dp)
+            ) {
+                Text(
+                    exercise.type.name + (if(!exercise.exercise.enabled) " (Archived)" else ""),
+                    fontWeight = if (exercise.exercise.enabled) FontWeight.Bold else FontWeight.Normal
+                )
+                Text(
+                    fontStyle = FontStyle.Italic,
+                    text = showPrediction(exercise.exercise.prediction, true),
+                    color = if (exercise.exercise.prediction.isEmpty()) {
+                        Color.Red
+                    } else {
+                        Color.Black
+                    }
+                )
+            }
+            ExerciseIcon(
+                exercise.type.imagePreview(),
+                Modifier
+                    .fillMaxWidth(1f)
+                    .aspectRatio(1f)
+                    .padding(end = 20.dp)
             )
         }
-        ExerciseIcon(
-            exercise.type.imagePreview(),
-            Modifier
-                .fillMaxWidth(1f)
-                .aspectRatio(1f)
-        )
     }
 }
 
@@ -391,15 +590,12 @@ fun WorkoutInfoScaffoldPreview() {
                 sessions = List(10) {
                     defaultSession()
                 },
-                onRemove = {},
                 deleteWorkout = {},
-                onMove = { from, to ->
-                    order = order.toMutableList().apply {
-                        set(to.index, from.key as Int)
-                        set(from.index, to.key as Int)
-                    }
+                orderExercises = {
+                    order = it
                 },
-                onUpdateWarmup = {}
+                archiveExercise = { _, _ ->
+                }
             )
         }
     }

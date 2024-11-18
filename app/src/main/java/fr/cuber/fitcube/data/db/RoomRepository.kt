@@ -30,12 +30,13 @@ class RoomRepository @Inject constructor(
         workout
     )
 
-    fun getWorkout(workoutId: Int) = workoutDao.getWorkout(workoutId).map { t -> t.copy(workout = t.workout.copy(order = t.workout.order.ifEmpty { t.exercises.map { it.exercise.id } })) }
+    fun getWorkout(workoutId: Int) = workoutDao.getWorkout(workoutId)
 
-    suspend fun getWorkoutExercise(id: Int) = exerciseDao.getWorkoutExercise(id)
+    fun getWorkoutExercise(id: Int) = exerciseDao.getWorkoutExercise(id)
 
 
     suspend fun saveWorkoutExercise(ex: WorkoutExercise) = exerciseDao.saveWorkoutExercise(ex)
+
     suspend fun deleteWorkoutExercise(ex: WorkoutExercise) {
         exerciseDao.deleteWorkoutExercise(ex)
         //We remove the exercise from the order list
@@ -45,6 +46,7 @@ class RoomRepository @Inject constructor(
         }
         workoutDao.moveOrder(order, ex.id)
     }
+
     suspend fun createWorkoutExercise(ex: WorkoutExercise) = exerciseDao.createWorkoutExercise(ex)
 
     fun getSessions(id: Int) = sessionDao.getSessionsByWorkoutId(id)
@@ -56,9 +58,11 @@ class RoomRepository @Inject constructor(
     suspend fun updateWorkoutStatus(id: Int, status: Boolean) = workoutDao.updateStatus(id, status)
     suspend fun updateImages(image: List<String>, id: Int) = exerciseDao.updateImages(image, id)
 
-    suspend fun createExerciseType(exercise: ExerciseType) = exerciseDao.createExerciseType(exercise)
+    suspend fun createExerciseType(exercise: ExerciseType) =
+        exerciseDao.createExerciseType(exercise)
 
-    suspend fun updateExerciseType(exercise: ExerciseType) = exerciseDao.updateExerciseType(exercise)
+    suspend fun updateExerciseType(exercise: ExerciseType) =
+        exerciseDao.updateExerciseType(exercise)
 
     fun getExerciseType(id: Int) = exerciseDao.getExerciseType(id).filterNotNull()
 
@@ -70,11 +74,14 @@ class RoomRepository @Inject constructor(
     }
 
     suspend fun getWorkoutSuspend(workoutId: Int) = workoutDao.getWorkoutSuspend(workoutId)
-    suspend fun updateWorkoutWarmup(workoutId: Int, it: Int) = workoutDao.updateWarmup(workoutId, it)
+
     suspend fun moveOrder(order: List<Int>, workoutId: Int) = workoutDao.moveOrder(order, workoutId)
+    suspend fun archiveExercise(id: Int, archived: Boolean) = exerciseDao.archiveExercise(id, archived)
 
 }
 
 fun <T> Flow<T>.success() = this.map { LoadingFlow.Success(it) }
 
-@Composable fun <T> Flow<LoadingFlow<T>>?.loadingCollect() = this?.collectAsState(initial = LoadingFlow.Loading) ?: MutableStateFlow(LoadingFlow.Loading).collectAsState()
+@Composable
+fun <T> Flow<LoadingFlow<T>>?.loadingCollect() = this?.collectAsState(initial = LoadingFlow.Loading)
+    ?: MutableStateFlow(LoadingFlow.Loading).collectAsState()

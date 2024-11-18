@@ -13,8 +13,13 @@ fun parsePrediction(prediction: String): List<Double> {
     var result = emptyArray<Double>()
     for(i in arr) {
         if(i.isEmpty()) continue
-        val arri = i.split("x")
-        result = result.plus(List(arri[0].toInt()) { arri[1].toDouble() })
+        if(i.contains(("x"))) {
+            val arri = i.split("x")
+            result = result.plus(List(arri[0].toInt()) { arri[1].toDouble() })
+        } else {
+            result = result.plus(i.toDouble())
+        }
+
     }
     return result.asList()
 }

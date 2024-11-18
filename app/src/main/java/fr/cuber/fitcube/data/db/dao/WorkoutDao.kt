@@ -1,6 +1,5 @@
 package fr.cuber.fitcube.data.db.dao
 
-import android.content.Context
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Insert
@@ -10,8 +9,6 @@ import androidx.room.Transaction
 import fr.cuber.fitcube.data.db.entity.Workout
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.defaultWorkout
-import fr.cuber.fitcube.data.db.entity.endWarmup
-import fr.cuber.fitcube.data.db.entity.startWarmup
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -40,9 +37,6 @@ interface WorkoutDao {
     @Transaction
     @Query("SELECT * FROM workouts WHERE workouts.id = :workoutId")
     suspend fun getWorkoutSuspend(workoutId: Int): WorkoutWithExercises
-
-    @Query("UPDATE workouts SET warmup = :it WHERE id = :workoutId")
-    suspend fun updateWarmup(workoutId: Int, it: Int)
 
     @Query("UPDATE workouts SET `order` = :order WHERE id = :workoutId")
     suspend fun moveOrder(order: List<Int>, workoutId: Int)
@@ -81,15 +75,3 @@ fun defaultWorkoutWithExercises(size: Int) = WorkoutWithExercises(
         defaultFullExercise(it)
     }
 )
-
-fun WorkoutWithExercises.inflate(context: Context): WorkoutWithExercises {
-    val list = exercises.toMutableList()
-    if(workout.startWarmup()) {
-        list.add(0, warmupExercise(true, context))
-    }
-    if(workout.endWarmup()) {
-        list.add(warmupExercise(false, context))
-    }
-    return WorkoutWithExercises(workout, list)
-
-}

@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,9 +35,8 @@ class WorkoutSessionViewModel @Inject constructor(
 
     fun finishSession() {
         val state = binder.getValue()
-        //Debug for now
         if(state.started == 0L) {
-            Toast.makeText(context, "Saving but no date", Toast.LENGTH_SHORT).show()
+            //During finishSession first call screen can reset and this method is called back, to avoid this
             closeService()
             return
         }
@@ -95,8 +93,6 @@ class WorkoutSessionViewModel @Inject constructor(
             }
             viewModelScope.launch {
                 binder.getEndTrigger().collect {
-                    println("End trigger ? $it")
-                    //This occurs even when closed from the screen
                     if(it) {
                         finishSession()
                     }
@@ -123,8 +119,8 @@ class WorkoutSessionViewModel @Inject constructor(
         this.closeScreen = close
     }
 
-    fun pushTop(index: Int) {
-        binder.pushTop(index)
+    fun orderExercises(ids: List<Int>) {
+        binder.orderExercises(ids)
     }
 
     fun skipPause() {

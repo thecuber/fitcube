@@ -1,5 +1,6 @@
 package fr.cuber.fitcube.home
 
+import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -48,12 +50,19 @@ fun HomeScreen(
     openExercise: (Int) -> Unit,
     createExercise: () -> Unit,
     openSettings: () -> Unit,
+    deleteArgument: Int,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    LaunchedEffect(key1 = deleteArgument) {
+        if(deleteArgument > 0) {
+            viewModel.deleteWorkout(deleteArgument)
+            Toast.makeText(context, "Workout deleted", Toast.LENGTH_SHORT).show()
+        }
+    }
     val workoutsLoading by viewModel.getWorkouts().loadingCollect()
     val exercisesLoading by viewModel.getExercises().loadingCollect()
     val sessionsLoading by viewModel.getSessions().loadingCollect()
-    val context = LocalContext.current
     val name = if(context.getString(R.string.version) == "prod") "Fitcube" else "Fitcube-dev"
     LoadingFlowContainer(
         value = workoutsLoading,

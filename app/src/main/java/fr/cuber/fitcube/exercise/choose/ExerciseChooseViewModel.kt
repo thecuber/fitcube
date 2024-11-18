@@ -21,7 +21,7 @@ class ExerciseChooseViewModel @Inject constructor(
                 0,
                 ex.id,
                 workout,
-                WorkoutMode.REPETITION,
+                WorkoutMode.LOADED_REPETITION,
                 emptyList()
             )
         )

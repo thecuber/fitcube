@@ -37,6 +37,8 @@ fun ExerciseIcon(img: String, modifier: Modifier = Modifier) {
             } catch (e: Exception) {//If image is not found, or run during preview
                 println("Im in error block ${e.message} ${e.stackTraceToString()}")
             }
+        } else {
+            bitmapState = null
         }
     }
     if (bitmapState != null) {

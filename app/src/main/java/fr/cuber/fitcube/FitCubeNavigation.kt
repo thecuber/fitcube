@@ -3,7 +3,6 @@ package fr.cuber.fitcube
 import androidx.navigation.NavHostController
 import fr.cuber.fitcube.FitCubeRouteArgs.EXERCISE_ID
 import fr.cuber.fitcube.FitCubeRouteArgs.WORKOUT_ID
-import fr.cuber.fitcube.FitCubeRoutes.HOME
 import fr.cuber.fitcube.FitCubeRoutes.SETTINGS
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_CHOOSE_SCREEN
 import fr.cuber.fitcube.FitCubeScreens.EXERCISE_EDIT_SCREEN
@@ -29,7 +28,7 @@ object FitCubeRouteArgs {
 }
 
 object FitCubeRoutes {
-    const val HOME = HOME_SCREEN
+    const val HOME = "$HOME_SCREEN/{$WORKOUT_ID}"
     const val WORKOUT_INFO = "$WORKOUT_INFO_SCREEN/{$WORKOUT_ID}"
     const val EXERCISE_CHOOSE = "$EXERCISE_CHOOSE_SCREEN/{$WORKOUT_ID}"
     const val EXERCISE_EDIT = "$EXERCISE_EDIT_SCREEN/{$EXERCISE_ID}"
@@ -66,7 +65,13 @@ class FitCubeNavigationActions(private val navHostController: NavHostController)
     }
 
     fun openHome() {
-        navHostController.navigate(HOME)
+        navHostController.navigate(HOME_SCREEN)
+    }
+
+    fun deleteWorkout(id: Int) {
+        navHostController.navigate("${HOME_SCREEN}/$id") {
+            popUpTo(0)
+        }
     }
 
 }

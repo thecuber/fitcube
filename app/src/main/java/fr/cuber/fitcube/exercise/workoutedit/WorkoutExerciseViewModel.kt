@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cuber.fitcube.data.db.RoomRepository
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
+import fr.cuber.fitcube.data.db.success
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,10 +22,6 @@ class WorkoutExerciseViewModel @Inject constructor(
         repository.saveWorkoutExercise(ex)
     }
 
-    suspend fun getExercise(id: Int) = repository.getWorkoutExercise(id)
-
-    fun deleteExercise(ex: WorkoutExercise) = viewModelScope.launch {
-        repository.deleteWorkoutExercise(ex)
-    }
+    fun getExercise(id: Int) = repository.getWorkoutExercise(id).success()
 
 }

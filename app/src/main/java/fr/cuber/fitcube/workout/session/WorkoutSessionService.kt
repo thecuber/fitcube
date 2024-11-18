@@ -11,31 +11,20 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
 import android.media.MediaPlayer
 import android.os.Binder
 import android.os.IBinder
 import android.text.Html
-import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import fr.cuber.fitcube.FitCubeActivity
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.WorkoutWithExercises
-import fr.cuber.fitcube.data.db.dao.inflate
 import fr.cuber.fitcube.data.db.dao.isWarmup
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
-import fr.cuber.fitcube.data.db.entity.endWarmup
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.data.db.entity.imageStream
-import fr.cuber.fitcube.data.db.entity.startWarmup
-import fr.cuber.fitcube.ui.theme.surfaceLight
-import fr.cuber.fitcube.utils.STRETCHING_ID
-import fr.cuber.fitcube.utils.WARMUP_ID
 import fr.cuber.fitcube.utils.boldPrediction
 import fr.cuber.fitcube.utils.getSoundDelay
 import fr.cuber.fitcube.utils.getStartingTime
@@ -82,25 +71,20 @@ class WorkoutSessionService : Service() {
          * Called once at startup, stores the workout
          */
         fun bindWorkout(workout: WorkoutWithExercises) {
-            val inflate = workout.inflate(context = applicationContext)
-            val inflateOrder = workout.workout.order.toMutableList().apply {
-                if(workout.workout.order.isEmpty()) {
-                    addAll(inflate.exercises.map { it.exercise.id })
-                } else {
-                    if(workout.workout.startWarmup()) {
-                        add(0, WARMUP_ID)
-                    }
-                    if(workout.workout.endWarmup()) {
-                        add(STRETCHING_ID)
-                    }
-                }
+            val updatedWorkout = workout.copy(
+                exercises = workout.exercises.filter { it.exercise.enabled }
+            )
+            val order = if(workout.workout.order.isNotEmpty()) {
+                workout.workout.order.filter { or -> updatedWorkout.exercises.find { it.exercise.id == or } != null }
+            } else {
+                updatedWorkout.exercises.map { it.exercise.id }
             }
             _uiState.value = _uiState.value.copy(
-                workout = inflate,
-                predictions = inflate.exercises.associate { it.exercise.id to it.exercise.prediction },
-                rest = inflate.workout.rest,
-                order = inflateOrder,
-                sets = inflateOrder.associateWith { 0 }.toMap(),
+                workout = updatedWorkout,
+                predictions = updatedWorkout.exercises.associate { it.exercise.id to it.exercise.prediction },
+                rest = workout.workout.rest,
+                order = order,
+                sets = order.associateWith { 0 }.toMap(),
                 timer = applicationContext.getStartingTime())
             updateNotification()
         }
@@ -246,12 +230,9 @@ class WorkoutSessionService : Service() {
             _uiState.value = _uiState.value.copy(timer = _uiState.value.timer + 15)
         }
 
-        fun pushTop(id: Int) {
-            _uiState.value = _uiState.value.copy(order = _uiState.value.order.toMutableList().apply {
-                val index = this.indexOf(id)
-                set(index, this[_uiState.value.currentExercise])
-                set(_uiState.value.currentExercise, id)
-            })
+        fun orderExercises(ids: List<Int>) {
+            _uiState.value = _uiState.value.copy(order = ids)
+            updateNotification()
         }
 
         /**
@@ -261,7 +242,7 @@ class WorkoutSessionService : Service() {
             cancelTimer()
             val current = _uiState.value.current()
             if(current.exercise.mode == WorkoutMode.TIMED) {
-                _uiState.value = _uiState.value.copy(timer = _uiState.value.currentSet(), status = SessionStatus.TIMING)
+                _uiState.value = _uiState.value.copy(timer = _uiState.value.current().exercise.prediction[_uiState.value.currentSet()].toInt(), status = SessionStatus.TIMING)
                 startTimer()
             } else {
                 _uiState.value = _uiState.value.copy(status = SessionStatus.EXERCISE)

@@ -37,10 +37,11 @@ import fr.cuber.fitcube.ui.theme.FitCubeTheme
 @Composable
 fun PredictionField(
     modifier: Modifier = Modifier,
-    validPrediction: (List<Double>) -> Unit
+    validPrediction: (List<Double>) -> Unit,
+    top: Boolean = true
 ) {
     var text by remember { mutableStateOf("") }
-    val regexPattern = "(\\d+x\\d+(\\.\\d+)?\\s?)+"
+    val regexPattern = "((\\d+x)?\\d+(\\.\\d+)?\\s?)+"
     var validParsing by remember {
         mutableStateOf(
             false
@@ -57,12 +58,12 @@ fun PredictionField(
         ) {
             OutlinedTextField(
                 value = text,
-                colors = OutlinedTextFieldDefaults.colors(
+                colors = if(top) OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color.White,
                     unfocusedBorderColor = Color.White,
                     unfocusedLabelColor = Color.White,
                     focusedLabelColor = Color.White,
-                ),
+                ) else OutlinedTextFieldDefaults.colors(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 label = { Text("Change to...") },
                 maxLines = 1, onValueChange = {

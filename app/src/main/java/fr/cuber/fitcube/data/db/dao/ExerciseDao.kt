@@ -5,11 +5,11 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Embedded
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
+import androidx.room.Upsert
 import fr.cuber.fitcube.data.db.entity.ExerciseType
 import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
@@ -31,9 +31,9 @@ interface ExerciseDao {
 
     @Transaction
     @Query("SELECT * FROM workout_exercises WHERE id = :id")
-    suspend fun getWorkoutExercise(id: Int): FullExercise
+    fun getWorkoutExercise(id: Int): Flow<FullExercise>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun saveWorkoutExercise(ex: WorkoutExercise)
 
     @Delete
@@ -59,6 +59,9 @@ interface ExerciseDao {
 
     @Query("DELETE FROM workout_exercises WHERE workoutId = :workoutId")
     suspend fun deleteWorkout(workoutId: Int)
+
+    @Query("UPDATE workout_exercises SET enabled = :archived WHERE id = :id")
+    suspend fun archiveExercise(id: Int, archived: Boolean)
 }
 
 data class FullExercise(

@@ -4,9 +4,14 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -17,20 +22,21 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ModeEdit
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Done
-import androidx.compose.material.icons.rounded.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.AlertDialog
@@ -67,7 +73,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -75,16 +83,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.cuber.fitcube.R
 import fr.cuber.fitcube.data.db.dao.FullExercise
 import fr.cuber.fitcube.data.db.dao.defaultFullExercise
-import fr.cuber.fitcube.data.db.dao.isWarmup
-import fr.cuber.fitcube.data.db.entity.ExerciseType
-import fr.cuber.fitcube.data.db.entity.WorkoutExercise
 import fr.cuber.fitcube.data.db.entity.WorkoutMode
 import fr.cuber.fitcube.data.db.entity.imagePreview
 import fr.cuber.fitcube.data.db.loadingCollect
@@ -96,6 +103,7 @@ import fr.cuber.fitcube.utils.parseDuration
 import fr.cuber.fitcube.utils.parseTimer
 import fr.cuber.fitcube.utils.showPrediction
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -125,7 +133,7 @@ fun WorkoutSessionScreen(
             onRestChange = { viewModel.setRest(it) },
             onCurrentPredictionChange = { a, b -> viewModel.setCurrentPrediction(a, b) },
             onNextWeightChange = { a, b -> viewModel.setNextPrediction(a, b) },
-            pushTop = { viewModel.pushTop(it) },
+            orderExercises = { viewModel.orderExercises(it) },
             skipPause = { viewModel.skipPause() },
             skipExercise = { viewModel.skipExercise(it) }
         )
@@ -142,7 +150,7 @@ fun WorkoutSessionScaffold(
     onRestChange: (Int) -> Unit,
     onCurrentPredictionChange: (List<Double>, Int) -> Unit,
     onNextWeightChange: (List<Double>, Int) -> Unit,
-    pushTop: (Int) -> Unit,
+    orderExercises: (List<Int>) -> Unit,
     skipPause: () -> Unit,
     skipExercise: (Boolean) -> Unit
 ) {
@@ -183,7 +191,7 @@ fun WorkoutSessionScaffold(
             onRestChange = onRestChange,
             onCurrentPredictionChange = onCurrentPredictionChange,
             onNextWeightChange = onNextWeightChange,
-            pushTop = pushTop,
+            orderExercises = orderExercises,
             skipPause = skipPause,
             skipExercise = skipExercise
         )
@@ -205,7 +213,7 @@ fun WorkoutSessionContentPreview() {
                 onRestChange = {},
                 onCurrentPredictionChange = { a, b -> a + b },
                 onNextWeightChange = { a, b -> a + b },
-                pushTop = {},
+                orderExercises = {},
                 skipPause = {},
                 skipExercise = {}
             )
@@ -229,7 +237,7 @@ fun WorkoutSessionContent(
     onRestChange: (Int) -> Unit,
     onCurrentPredictionChange: (List<Double>, Int) -> Unit,
     onNextWeightChange: (List<Double>, Int) -> Unit,
-    pushTop: (Int) -> Unit,
+    orderExercises: (List<Int>) -> Unit,
     skipPause: () -> Unit,
     skipExercise: (Boolean) -> Unit
 ) {
@@ -314,10 +322,10 @@ fun WorkoutSessionContent(
                 exerciseIndex = state.currentExercise + 1,
                 exerciseCount = exerciseCount,
                 expanded = expanded,
-                pushTop = pushTop,
                 setExpanded = {
                     expanded = expanded(expanded, Expanded.EXERCISES)
-                }
+                },
+                orderExercises = orderExercises
             )
         }
     }
@@ -740,6 +748,7 @@ fun WorkoutSessionActionsPreview() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WorkoutSessionNextExercise(
     modifier: Modifier = Modifier,
@@ -748,15 +757,16 @@ fun WorkoutSessionNextExercise(
     exerciseIndex: Int,
     exerciseCount: Int,
     exercises: List<FullExercise>,
-    pushTop: (Int) -> Unit,
-    preview: Boolean = false
+    preview: Boolean = false,
+    orderExercises: (List<Int>) -> Unit
 ) {
+    val localDensity = LocalDensity.current
     var mod = modifier
         .fillMaxWidth()
         .animateContentSize()
         .clickable { setExpanded() }
     mod = if (expanded == Expanded.EXERCISES) {
-        if (preview) mod else mod.fillMaxHeight(0.3f)
+        if (preview) mod else mod.fillMaxHeight(0.55f)
     } else {
         mod.padding(10.dp)
     }
@@ -764,40 +774,156 @@ fun WorkoutSessionNextExercise(
         modifier = mod,
     ) {
         if (expanded == Expanded.EXERCISES) {
-            Text(
-                "Coming up",
-                modifier = Modifier.padding(bottom = 5.dp),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
+            var editable by remember {
+                mutableStateOf(false)
+            }
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 5.dp)
+            ) {
+                Text(
+                    "Coming up",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                IconButton(onClick = {
+                    editable = !editable
+                }) {
+                    Icon(Icons.Filled.ModeEdit, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+            }
             HorizontalDivider()
-            LazyColumn {
-                itemsIndexed(exercises.subList(exerciseIndex, exerciseCount)) { index, exercise ->
-                    val enabled = !exercise.isWarmup() and !exercises[exerciseIndex - 1].isWarmup()
-                    Row(
+            var previousDragId by remember {
+                mutableIntStateOf(-1)
+            }
+            var dragId by remember {
+                mutableIntStateOf(-1)
+            }
+            //First value is the total offset, second is how much we remove from previous drag
+            var dragOffsets by remember {
+                mutableStateOf(exercises.associate { it.exercise.id to Pair(0f, 0f) })
+            }
+            var dragHeights by remember {
+                mutableStateOf(exercises.associate { it.exercise.id to 0f})
+            }
+            var order by remember {
+                mutableStateOf(exercises.map { it.exercise.id })
+            }
+            LazyColumn(
+                modifier = Modifier.background(Color.LightGray)
+            ) {
+                items(exercises.subList(exerciseIndex, exerciseCount)) { exercise ->
+                    val id = exercise.exercise.id
+                    val index = order.indexOf(id)
+                    val animatedOffset by animateFloatAsState(targetValue = dragOffsets[id]!!.first,
+                        label = ""
+                    )
+                    Column(
                         modifier = Modifier
+                            .zIndex(if (dragId == id) 1f else 0f)
                             .fillMaxWidth()
-                            .height(IntrinsicSize.Min) // Add this line
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .background(if (enabled) Color.LightGray else Color(0xFFDEDEDE))
-                                .clickable(
-                                    enabled = enabled
-                                ) {
-                                    pushTop(exercise.exercise.id)
-                                },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.KeyboardDoubleArrowUp,
-                                contentDescription = null,
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                tint = if (enabled) Color.Black else Color.Gray
+                            .onGloballyPositioned { c ->
+                                dragHeights = dragHeights
+                                    .toMutableMap()
+                                    .apply {
+                                        this[id] = with(localDensity) {
+                                            c.size.height
+                                                .toDp()
+                                                .toPx()
+                                        }
+                                    }
+                            }
+                            .offset {
+                                IntOffset(0, (if(dragId == -1 && previousDragId != id) dragOffsets[id]!!.first else animatedOffset).roundToInt())
+                            }
+                            .combinedClickable(
+                                enabled = !editable,
+                                onClick = {},
+                                onDoubleClick = {
+                                    order = order
+                                        .toMutableList()
+                                        .apply {
+                                            this[index] = this[exerciseIndex - 1]
+                                            this[exerciseIndex - 1] = id
+                                        }
+                                    orderExercises(order)
+                                }
                             )
-                        }
+                            .draggable(
+                                enabled = editable,
+                                orientation = Orientation.Vertical,
+                                state = rememberDraggableState { delta ->
+                                    dragOffsets = dragOffsets
+                                        .toMutableMap()
+                                        .apply {
+                                            val v = this[id]!!
+                                            this[id] = Pair(v.first + delta, v.second)
+                                        }
+                                    //We need to check
+                                    if (index > exerciseIndex) {
+                                        val prevId = order[index - 1]
+                                        val offset = dragOffsets[id]!!
+                                        val offsetDiff = offset.first - offset.second
+                                        if (offsetDiff < 0 && dragHeights[prevId]!! / 2 < -offsetDiff) {
+                                            order = order
+                                                .toMutableList()
+                                                .apply {
+                                                    this[index] = prevId
+                                                    this[index - 1] = id
+                                                }
+                                            dragOffsets = dragOffsets
+                                                .toMutableMap()
+                                                .apply {
+                                                    val v =
+                                                        dragHeights[prevId]!! / 2 + dragHeights[id]!! / 2
+                                                    this[prevId] =
+                                                        Pair(this[prevId]!!.first + v, 0f)
+                                                    this[id] = Pair(offset.first, offset.second - v)
+                                                }
+                                        }
+                                    }
+                                    if (index < order.size - 1) {
+                                        val nextId = order[index + 1]
+                                        val offset = dragOffsets[id]!!
+                                        val offsetDiff = offset.first - offset.second
+                                        if (offsetDiff > 0 && dragHeights[nextId]!! / 2 < offsetDiff) {
+                                            order = order
+                                                .toMutableList()
+                                                .apply {
+                                                    this[index] = nextId
+                                                    this[index + 1] = id
+                                                }
+                                            dragOffsets = dragOffsets
+                                                .toMutableMap()
+                                                .apply {
+                                                    val v =
+                                                        dragHeights[nextId]!! / 2 + dragHeights[id]!! / 2
+                                                    this[nextId] =
+                                                        Pair(this[nextId]!!.first - v, 0f)
+                                                    this[id] = Pair(offset.first, offset.second + v)
+                                                }
+                                        }
+                                    }
+                                },
+                                onDragStarted = {
+                                    dragId = id
+                                    previousDragId = -1
+                                },
+                                onDragStopped = {
+                                    dragOffsets = dragOffsets
+                                        .toMutableMap()
+                                        .mapValues { Pair(0f, 0f) }
+                                    orderExercises(order)
+                                    dragId = -1
+                                    previousDragId = id
+                                }
+                            )
+                            .height(IntrinsicSize.Min)
+                            .background(MaterialTheme.colorScheme.surface)
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -805,9 +931,11 @@ fun WorkoutSessionNextExercise(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Column {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Text(
-                                    "${exercise.type.name} (${exerciseIndex + 1 + index}/$exerciseCount)",
+                                    "${exercise.type.name} (${order.indexOf(id) + 1}/$exerciseCount)",
                                     fontSize = 14.sp
                                 )
                                 Text(
@@ -816,13 +944,19 @@ fun WorkoutSessionNextExercise(
                                     fontSize = 14.sp
                                 )
                             }
-                            ExerciseIcon(
-                                img = exercise.type.imagePreview(), modifier = Modifier
-                                    .fillMaxWidth(0.4f)
-                                    .aspectRatio(1f)
-                            )
+                            Row(
+                                modifier = Modifier.weight(0.2f)
+                            ) {
+                                ExerciseIcon(
+                                    img = exercise.type.imagePreview(), modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1f)
+                                )
+                            }
+
                         }
                     }
+                    //TODO Fix this color
                     HorizontalDivider()
                 }
             }
@@ -859,136 +993,143 @@ fun WorkoutSessionNextExercise(
 @Preview
 @Composable
 fun WorkoutSessionNextExercisePreview() {
-    val exercises = listOf(
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = -314,
-                typeId = -314,
-                workoutId = 0,
-                mode = WorkoutMode.TIMED,
-                prediction = listOf(5.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = -314,
-                name = "Warmup",
-                description = "",
-                image = listOf("png/warmup.png")
-            )
-        ),
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = 10,
-                typeId = 294,
-                workoutId = 3,
-                mode = WorkoutMode.REPETITION,
-                prediction = listOf(5.0, 8.0, 8.0, 8.0, 8.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = 294,
-                name = "Lat pulldowns",
-                description = "",
-                image = listOf()
-            )
-        ),
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = 11,
-                typeId = 45,
-                workoutId = 3,
-                mode = WorkoutMode.REPETITION,
-                prediction = listOf(30.0, 30.0, 30.0, 30.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = 45,
-                name = "Dumbbell Bent Arm Pullover",
-                description = "",
-                image = listOf("png/0046-relaxation.png", "png/0046-tension.png")
-            )
-        ),
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = 12,
-                typeId = 24,
-                workoutId = 3,
-                mode = WorkoutMode.REPETITION,
-                prediction = listOf(40.0, 40.0, 40.0, 40.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = 24,
-                name = "Rear Deltoid Row Dumbbell",
-                description = "",
-                image = listOf("png/0024-relaxation.png", "png/0024-tension.png")
-            )
-        ),
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = 13,
-                typeId = 203,
-                workoutId = 3,
-                mode = WorkoutMode.REPETITION,
-                prediction = listOf(25.0, 25.0, 25.0, 25.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = 203,
-                name = "Alternating Hammer Curl with Dumbbell",
-                description = "",
-                image = listOf("png/0213-relaxation.png", "png/0213-tension.png")
-            )
-        ),
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = 14,
-                typeId = 213,
-                workoutId = 3,
-                mode = WorkoutMode.REPETITION,
-                prediction = listOf(30.0, 30.0, 25.0, 25.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = 213,
-                name = "Alternating Bicep Curl with Dumbbell",
-                description = "",
-                image = listOf("png/0223-relaxation.png", "png/0223-tension.png")
-            )
-        ),
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = 22,
-                typeId = 299,
-                workoutId = 3,
-                mode = WorkoutMode.REPETITION,
-                prediction = listOf(5.0, 5.0, 5.0, 5.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = 299,
-                name = "Tirage sur tête",
-                description = "",
-                image = listOf()
-            )
-        ),
-        FullExercise(
-            exercise = WorkoutExercise(
-                id = -315,
-                typeId = -315,
-                workoutId = 0,
-                mode = WorkoutMode.TIMED,
-                prediction = listOf(5.0),
-                enabled = true
-            ),
-            type = ExerciseType(
-                id = -315,
-                name = "Stretching",
-                description = "",
-                image = listOf("png/warmup.png")
+    /*var exercises by remember {
+        mutableStateOf(
+            listOf(
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = -314,
+                        typeId = -314,
+                        workoutId = 0,
+                        mode = WorkoutMode.TIMED,
+                        prediction = listOf(5.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = -314,
+                        name = "Warmup",
+                        description = "",
+                        image = listOf("png/warmup.png")
+                    )
+                ),
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = 10,
+                        typeId = 294,
+                        workoutId = 3,
+                        mode = WorkoutMode.REPETITION,
+                        prediction = listOf(5.0, 8.0, 8.0, 8.0, 8.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = 294,
+                        name = "Lat pulldowns",
+                        description = "",
+                        image = listOf()
+                    )
+                ),
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = 11,
+                        typeId = 45,
+                        workoutId = 3,
+                        mode = WorkoutMode.REPETITION,
+                        prediction = listOf(30.0, 30.0, 30.0, 30.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = 45,
+                        name = "Dumbbell Bent Arm Pullover",
+                        description = "",
+                        image = listOf("png/0046-relaxation.png", "png/0046-tension.png")
+                    )
+                ),
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = 12,
+                        typeId = 24,
+                        workoutId = 3,
+                        mode = WorkoutMode.REPETITION,
+                        prediction = listOf(40.0, 40.0, 40.0, 40.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = 24,
+                        name = "Rear Deltoid Row Dumbbell",
+                        description = "",
+                        image = listOf("png/0024-relaxation.png", "png/0024-tension.png")
+                    )
+                ),
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = 13,
+                        typeId = 203,
+                        workoutId = 3,
+                        mode = WorkoutMode.REPETITION,
+                        prediction = listOf(25.0, 25.0, 25.0, 25.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = 203,
+                        name = "Alternating Hammer Curl with Dumbbell",
+                        description = "",
+                        image = listOf("png/0213-relaxation.png", "png/0213-tension.png")
+                    )
+                ),
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = 14,
+                        typeId = 213,
+                        workoutId = 3,
+                        mode = WorkoutMode.REPETITION,
+                        prediction = listOf(30.0, 30.0, 25.0, 25.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = 213,
+                        name = "Alternating Bicep Curl with Dumbbell",
+                        description = "",
+                        image = listOf("png/0223-relaxation.png", "png/0223-tension.png")
+                    )
+                ),
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = 22,
+                        typeId = 299,
+                        workoutId = 3,
+                        mode = WorkoutMode.REPETITION,
+                        prediction = listOf(5.0, 5.0, 5.0, 5.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = 299,
+                        name = "Tirage sur tête",
+                        description = "",
+                        image = listOf()
+                    )
+                ),
+                FullExercise(
+                    exercise = WorkoutExercise(
+                        id = -315,
+                        typeId = -315,
+                        workoutId = 0,
+                        mode = WorkoutMode.TIMED,
+                        prediction = listOf(5.0),
+                        enabled = true
+                    ),
+                    type = ExerciseType(
+                        id = -315,
+                        name = "Stretching",
+                        description = "",
+                        image = listOf("png/warmup.png")
+                    )
+                )
             )
         )
-    )
+    }*/
+    var exercises by remember {
+        mutableStateOf(List(100) { defaultFullExercise(it) })
+    }
     FitCubeTheme {
         Surface {
             WorkoutSessionNextExercise(
@@ -997,8 +1138,10 @@ fun WorkoutSessionNextExercisePreview() {
                 expanded = Expanded.EXERCISES,
                 setExpanded = {},
                 exercises = exercises,
-                pushTop = {},
-                preview = true
+                preview = true,
+                orderExercises = {
+                    exercises = exercises.toMutableList().sortedBy { a -> it.indexOf(a.exercise.id) }
+                }
             )
         }
     }

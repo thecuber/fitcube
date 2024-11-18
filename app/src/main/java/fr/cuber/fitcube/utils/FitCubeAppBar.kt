@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -71,7 +75,7 @@ fun FitCubeAppBar(
         },
         actions = {
             actions.forEach { (icon, action) ->
-                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.clickable { action() }, tint = color)
+                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.clickable { action() }.padding(start = 20.dp), tint = color)
             }
             Spacer(modifier = Modifier.padding(5.dp))
         },
@@ -85,7 +89,7 @@ private fun FitCubeAppBarPreview() {
     FitCubeTheme {
         Surface {
             FitCubeAppBar(title = "FitCube", icon = true,
-                actions = mapOf(Icons.Rounded.Close to {})
+                actions = mapOf(Icons.Rounded.Close to {}, Icons.Rounded.Add to {}, Icons.Rounded.Remove to {}, Icons.Rounded.Settings to {}, Icons.Rounded.Archive to {})
             )
         }
     }

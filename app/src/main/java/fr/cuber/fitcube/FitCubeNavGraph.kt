@@ -30,7 +30,13 @@ fun FitCubeNavGraph(
         navController = navController,
         startDestination = startDestination,
     ) {
-        composable(FitCubeRoutes.HOME) {
+        composable(FitCubeRoutes.HOME,
+            arguments = listOf(
+                navArgument(WORKOUT_ID) {
+                    defaultValue = 0
+                    type = NavType.IntType
+                }
+            )) {
             HomeScreen(
                 openWorkout = { task -> navActions.openWorkout(task) },
                 startWorkout = { task -> navActions.startWorkout(task) },
@@ -38,6 +44,7 @@ fun FitCubeNavGraph(
                 createExercise = {
                     navActions.editExerciseType(0)
                 },
+                deleteArgument = it.arguments?.getInt(WORKOUT_ID)!!,
                 openSettings = { navActions.openSettings() }
             )
         }
@@ -53,7 +60,8 @@ fun FitCubeNavGraph(
                 workoutId = id,
                 openExercise = { navActions.openExercise(it.id) },
                 startWorkout = { navActions.startWorkout(id) },
-                addExercise = { navActions.chooseExercise(id) }
+                addExercise = { navActions.chooseExercise(id) },
+                deleteWorkout = { navActions.deleteWorkout(id) }
             )
         }
         composable(
