@@ -75,7 +75,8 @@ fun FitCubeAppBar(
         },
         actions = {
             actions.forEach { (icon, action) ->
-                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.clickable { action() }.padding(start = 20.dp), tint = color)
+                Spacer(modifier = Modifier.padding(10.dp))
+                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.clickable { action() }, tint = color)
             }
             Spacer(modifier = Modifier.padding(5.dp))
         },

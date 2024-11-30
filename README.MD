@@ -18,3 +18,10 @@ Moreover, you can manage most of the commands from a notification that you can a
 ## Screenshots
 
 ![image](github/screen_session.png)
+
+## Things to add
+
+- Add a support to add cardio exercises during the session
+- Add exercises labeled as "warm-ups" for a special timing
+- Add support for different types of exercises (especially loaded / unloaded)
+- Add visualisation of previous sessions

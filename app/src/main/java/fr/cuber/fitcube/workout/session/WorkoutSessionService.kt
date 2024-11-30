@@ -50,7 +50,7 @@ class WorkoutSessionService : Service() {
     //Binder used to receive communications from the activity and the BroadcastReceiver
     inner class ServiceBinder : Binder() {
 
-        private val _uiState = MutableStateFlow(defaultSessionState(0))
+        private val _uiState = MutableStateFlow(defaultSessionState(0, -1))
         private val state: StateFlow<SessionState> = _uiState
 
         fun listenState() = state
@@ -220,7 +220,7 @@ class WorkoutSessionService : Service() {
         fun finishService() {
             cancelTimer()
             elapsedTimer.cancel()
-            binder._uiState.value = defaultSessionState(0)
+            binder._uiState.value = defaultSessionState(0, -1)
             player.release()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()

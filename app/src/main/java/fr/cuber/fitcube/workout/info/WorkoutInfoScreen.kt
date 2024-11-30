@@ -43,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -196,7 +197,7 @@ fun WorkoutInfoScaffold(
                 Icon(Icons.Filled.PlayArrow, "Start workout.")
             }
         }
-    ) {
+    ) { it ->
         WorkoutInfoContent(
             openExercise = openExercise,
             modifier = modifier.padding(it),
@@ -286,32 +287,6 @@ fun WorkoutInfoContent(
                 .fillMaxWidth()
         )
         HorizontalDivider()
-        /*Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            OutlinedTIButton(text = if (delete) "Cancel" else "Add exercise", onClick = {
-                if (delete) {
-                    selection.value = listOf()
-                    delete = false
-                } else {
-                    onAdd()
-                }
-            }, icon = if (delete) Icons.Filled.Cancel else Icons.Filled.Add)
-            OutlinedTIButton(
-                text = "Delete " + (if (delete) selection.value.size.toString() + " " else "") + "exercises",
-                onClick = {
-                    if (delete) {
-                        onRemove(selection.value)
-                        selection.value = listOf()
-                        delete = false
-                    } else {
-                        delete = true
-                    }
-                },
-                icon = Icons.Filled.Delete
-            )
-        }*/
         val localDensity = LocalDensity.current
         var previousDragId by remember {
             mutableIntStateOf(-1)
@@ -329,116 +304,123 @@ fun WorkoutInfoContent(
         var order by remember {
             mutableStateOf(exercises.map { it.exercise.id })
         }
-        //Text(text = dragOffsets.toString())
+        LaunchedEffect(exercises) {
+            order = exercises.map { it.exercise.id }
+            dragOffsets = exercises.associate { it.exercise.id to Pair(0f, 0f) }
+            dragHeights = exercises.associate { it.exercise.id to 0f }.toMutableMap()
+        }
         LazyColumn(
             modifier = Modifier.background(Color.LightGray)
         ) {
             items(exercises) { exercise ->
                 val id = exercise.exercise.id
                 val index = order.indexOf(id)
-                val animatedOffset by animateFloatAsState(
-                    targetValue = dragOffsets[id]!!.first,
-                    label = ""
-                )
-                Column(
-                    modifier = Modifier
-                        .zIndex(if (dragId == id) 1f else 0f)
-                        .fillMaxWidth()
-                        .onGloballyPositioned { c ->
-                            dragHeights = dragHeights
-                                .toMutableMap()
-                                .apply {
-                                    this[id] = with(localDensity) {
-                                        c.size.height
-                                            .toDp()
-                                            .toPx()
-                                    }
-                                }
-                        }
-                        .offset {
-                            IntOffset(
-                                0,
-                                (if (dragId == -1 && previousDragId != id) dragOffsets[id]!!.first else animatedOffset).roundToInt()
-                            )
-                        }
-                        .draggable(
-                            orientation = Orientation.Vertical,
-                            state = rememberDraggableState { delta ->
-                                dragOffsets = dragOffsets
+                if(dragOffsets[id] != null) {
+
+                    val animatedOffset by animateFloatAsState(
+                        targetValue = dragOffsets[id]!!.first,
+                        label = ""
+                    )
+                    Column(
+                        modifier = Modifier
+                            .zIndex(if (dragId == id) 1f else 0f)
+                            .fillMaxWidth()
+                            .onGloballyPositioned { c ->
+                                dragHeights = dragHeights
                                     .toMutableMap()
                                     .apply {
-                                        val v = this[id]!!
-                                        this[id] = Pair(v.first + delta, v.second)
+                                        this[id] = with(localDensity) {
+                                            c.size.height
+                                                .toDp()
+                                                .toPx()
+                                        }
                                     }
-                                if (index > 0) {
-                                    val prevId = order[index - 1]
-                                    val offset = dragOffsets[id]!!
-                                    val offsetDiff = offset.first - offset.second
-                                    if (offsetDiff < 0 && dragHeights[prevId]!! / 2 < -offsetDiff) {
-                                        order = order
-                                            .toMutableList()
-                                            .apply {
-                                                this[index] = prevId
-                                                this[index - 1] = id
-                                            }
-                                        dragOffsets = dragOffsets
-                                            .toMutableMap()
-                                            .apply {
-                                                val v =
-                                                    dragHeights[prevId]!! / 2 + dragHeights[id]!! / 2
-                                                this[prevId] =
-                                                    Pair(this[prevId]!!.first + v, 0f)
-                                                this[id] = Pair(offset.first, offset.second - v)
-                                            }
-                                    }
-                                }
-                                if (index < order.size - 1) {
-                                    val nextId = order[index + 1]
-                                    val offset = dragOffsets[id]!!
-                                    val offsetDiff = offset.first - offset.second
-                                    if (offsetDiff > 0 && dragHeights[nextId]!! / 2 < offsetDiff) {
-                                        order = order
-                                            .toMutableList()
-                                            .apply {
-                                                this[index] = nextId
-                                                this[index + 1] = id
-                                            }
-                                        dragOffsets = dragOffsets
-                                            .toMutableMap()
-                                            .apply {
-                                                val v =
-                                                    dragHeights[nextId]!! / 2 + dragHeights[id]!! / 2
-                                                this[nextId] =
-                                                    Pair(this[nextId]!!.first - v, 0f)
-                                                this[id] = Pair(offset.first, offset.second + v)
-                                            }
-                                    }
-                                }
-                            },
-                            onDragStarted = {
-                                dragId = id
-                                previousDragId = -1
-                            },
-                            onDragStopped = {
-                                dragOffsets = dragOffsets
-                                    .toMutableMap()
-                                    .mapValues { Pair(0f, 0f) }
-                                orderExercises(order)
-                                dragId = -1
-                                previousDragId = id
                             }
+                            .offset {
+                                IntOffset(
+                                    0,
+                                    (if (dragId == -1 && previousDragId != id) dragOffsets[id]!!.first else animatedOffset).roundToInt()
+                                )
+                            }
+                            .draggable(
+                                orientation = Orientation.Vertical,
+                                state = rememberDraggableState { delta ->
+                                    dragOffsets = dragOffsets
+                                        .toMutableMap()
+                                        .apply {
+                                            val v = this[id]!!
+                                            this[id] = Pair(v.first + delta, v.second)
+                                        }
+                                    if (index > 0) {
+                                        val prevId = order[index - 1]
+                                        val offset = dragOffsets[id]!!
+                                        val offsetDiff = offset.first - offset.second
+                                        if (offsetDiff < 0 && dragHeights[prevId]!! / 2 < -offsetDiff) {
+                                            order = order
+                                                .toMutableList()
+                                                .apply {
+                                                    this[index] = prevId
+                                                    this[index - 1] = id
+                                                }
+                                            dragOffsets = dragOffsets
+                                                .toMutableMap()
+                                                .apply {
+                                                    val v =
+                                                        dragHeights[prevId]!! / 2 + dragHeights[id]!! / 2
+                                                    this[prevId] =
+                                                        Pair(this[prevId]!!.first + v, 0f)
+                                                    this[id] = Pair(offset.first, offset.second - v)
+                                                }
+                                        }
+                                    }
+                                    if (index < order.size - 1) {
+                                        val nextId = order[index + 1]
+                                        val offset = dragOffsets[id]!!
+                                        val offsetDiff = offset.first - offset.second
+                                        if (offsetDiff > 0 && dragHeights[nextId]!! / 2 < offsetDiff) {
+                                            order = order
+                                                .toMutableList()
+                                                .apply {
+                                                    this[index] = nextId
+                                                    this[index + 1] = id
+                                                }
+                                            dragOffsets = dragOffsets
+                                                .toMutableMap()
+                                                .apply {
+                                                    val v =
+                                                        dragHeights[nextId]!! / 2 + dragHeights[id]!! / 2
+                                                    this[nextId] =
+                                                        Pair(this[nextId]!!.first - v, 0f)
+                                                    this[id] = Pair(offset.first, offset.second + v)
+                                                }
+                                        }
+                                    }
+                                },
+                                onDragStarted = {
+                                    dragId = id
+                                    previousDragId = -1
+                                },
+                                onDragStopped = {
+                                    dragOffsets = dragOffsets
+                                        .toMutableMap()
+                                        .mapValues { Pair(0f, 0f) }
+                                    orderExercises(order)
+                                    dragId = -1
+                                    previousDragId = id
+                                }
+                            )
+                            //.height(IntrinsicSize.Min)
+                            .background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        WorkoutInfoExerciseItem(
+                            exercise,
+                            openExercise = openExercise,
+                            archiveExercise = archiveExercise
                         )
-                        //.height(IntrinsicSize.Min)
-                        .background(MaterialTheme.colorScheme.surface)
-                ) {
-                    WorkoutInfoExerciseItem(
-                        exercise,
-                        openExercise = openExercise,
-                        archiveExercise = archiveExercise
-                    )
+                    }
+                    HorizontalDivider()
                 }
-                HorizontalDivider()
-            }
+                }
         }
     }
 }

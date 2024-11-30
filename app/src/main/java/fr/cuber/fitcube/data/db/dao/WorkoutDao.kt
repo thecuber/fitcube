@@ -69,8 +69,8 @@ data class WorkoutWithExercises(
     val exercises: List<FullExercise>
 )
 
-fun defaultWorkoutWithExercises(size: Int) = WorkoutWithExercises(
-    workout = defaultWorkout(),
+fun defaultWorkoutWithExercises(size: Int, id: Int = 0) = WorkoutWithExercises(
+    workout = defaultWorkout(id),
     exercises = List(size) {
         defaultFullExercise(it)
     }

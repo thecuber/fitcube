@@ -154,6 +154,9 @@ fun WorkoutSessionScaffold(
     skipPause: () -> Unit,
     skipExercise: (Boolean) -> Unit
 ) {
+    if(state.workout.workout.id == -1){//Bug where during cancel, state is set back to default and this is loaded
+        return
+    }
     Scaffold(
         topBar = {
             TopAppBar(

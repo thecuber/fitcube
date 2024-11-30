@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [1.3.2] - 30/11/2024
+
+- Fixed a bug for archived exercises
+- Fixed a bug when quitting the session view
+- Added gif support
+
 ## [1.3.1] - 18/11/2024
 
 - Now takes into account single weight for weight update, fields also automatically clears

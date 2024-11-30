@@ -35,7 +35,7 @@ fun SessionState.currentSet(): Int {
     return sets[order[currentExercise]]!!
 }
 
-fun defaultSessionState(size: Int) = SessionState(
+fun defaultSessionState(size: Int, id: Int = 0) = SessionState(
     status = SessionStatus.START,
     List(size) { it }
         .associateWith { 0 }
@@ -43,7 +43,7 @@ fun defaultSessionState(size: Int) = SessionState(
     List(size) { it },
     0,
     10,
-    defaultWorkoutWithExercises(size),
+    defaultWorkoutWithExercises(size, id),
     0L,
     List(size) { it }.associateWith { List(4) { it * 10.0 } },
     0L,
